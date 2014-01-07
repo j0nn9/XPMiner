@@ -10,6 +10,11 @@ static mpz_t mpz_p_1;
 static mpz_t mpz_res;
 static mpz_t mpz_p;
 
+/* bit used for the fractional length */
+static const uint32_t n_fractional_bits = 24;
+static const uint32_t TARGET_FRACTIONAL_MASK = (1u << n_fractional_bits) - 1;
+static const uint32_t TARGET_LENGTH_MASK = ~TARGET_FRACTIONAL_MASK;
+
 /**
  * init
  */
@@ -24,9 +29,32 @@ static inline void init_miner() {
 }
 
 /**
+ * Calculates the fractional length of a given prime, and its modulo
+ * restult form the fermat test
+ */
+static inline uint32_t get_fractional_length(mpz_t mpz_p, mpz_t mpz_fermat_res) {
+
+    /* res = p - (2^(p - 1) mod p) */
+    mpz_sub(mpz_res, mpz_p, mpz_fermat_res);
+
+    /* res << n_fractional_bits */
+    mpz_mul_2exp(mpz_res, mpz_res, n_fractional_bits);
+
+    /* res = res / p */
+    mpz_tdiv_q(mpz_res, mpz_res, mpz_p);
+
+    uint32_t n_fractional_length = mpz_get_ui(mpz_res);
+
+    if (n_fractional_length >= (1 << n_fractional_bits))
+       printf("[EE] FermatProbablePrimalityTest() : fractional assert");
+
+    return = n_fractional_length;
+}
+
+/**
  * fermat test pseudo prime test
  */
-static inline char is_fermat_prime(mpz_t mpz_p) {
+static inline char fermat_test(mpz_t mpz_p) {
   
   mpz_sub_ui(mpz_p_1, mpz_p, 1);
   mpz_powm(mpz_res, mpz_two, mpz_p_1, mpz_p);
@@ -47,7 +75,7 @@ static inline char is_fermat_prime(mpz_t mpz_p) {
  *    0: test for Cunningham Chain of the second kind: n = 2p - 1
  *  returns wether the n is a prime or not
  */
-static inline char is_euler_langrange_lifchitz_prime(mpz_t mpz_n, char sophie_germain) {
+static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n, char sophie_germain) {
 
   /* mpz_p = mpz_n - 1 */
   mpz_sub_ui(mpz_p, mpz_n, 1);
@@ -58,7 +86,7 @@ static inline char is_euler_langrange_lifchitz_prime(mpz_t mpz_n, char sophie_ge
   /* res = (2^mpz_p) % n */
   mpz_powm(mpz_res, mpz_two, mpz_p, n);
 
-  unsigned int n_mod8 = mpz_get_ui(n) % 8;
+  uint32_t n_mod8 = mpz_get_ui(n) % 8;
   char passed_test   = 0;
 
   /* Euler & Lagrange */
