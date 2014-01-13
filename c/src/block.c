@@ -39,6 +39,7 @@ typedef struct {
   uint8_t       hash_merkle_root[HASH_LENGTH];        // 36+32
   uint32_t      time;                                 // 68+4
   uint32_t      min_difficulty;                       // 72+4
+  /* value just to chainge the hash */
   uint32_t      nonce;                                // 76+4
   uint8_t       primemultiplier[MULTIPLIER_LENGTH];   // 80+48
 } BlockHeader;  // =128 bytes header (80 default + 48 primemultiplier)
