@@ -49,7 +49,7 @@ typedef struct {
 /**
  * returns the number of primes in the sive
  */
-static inline uint64_t count_sieve(uint8_t *ary, uint32_t sieve_size) {
+static uint64_t count_sieve(uint8_t *ary, uint32_t sieve_size) {
 
   /* 2 and 3 are not counted in the loop */
   uint64_t i, n = 2;
@@ -77,7 +77,7 @@ static inline uint64_t count_sieve(uint8_t *ary, uint32_t sieve_size) {
 /**
  * saves the primes and frees the sieve
  */
-static inline PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
+static PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
   
   PrimeTable *table = malloc(sizeof(PrimeTable));
 
@@ -89,8 +89,8 @@ static inline PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 
   /* 2 and 3 are not counted in the loop */
   uint64_t i, n = 2;
-  ary[0] = 2;
-  ary[1] = 3;
+  table->ptr[0] = 2;
+  table->ptr[1] = 3;
 
   /** 
    * run the sieve in seps of size 6 
@@ -100,13 +100,13 @@ static inline PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 
     /* check 6n - 1*/
     if (is_prime(ary, i)) {
-      ary[n] = i;
+      table->ptr[n] = i;
       n++;
     }
 
     i += 2; /* check 6n + 1 */
     if (is_prime(ary, i)) {
-      ary[n] = i;
+      table->ptr[n] = i;
       n++;
     }
   }
@@ -118,10 +118,10 @@ static inline PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 /**
  * 
  */
-static PrimeTable *gen_prima_table(uint32_t sieve_size) {
+PrimeTable *gen_prima_table(uint32_t sieve_size) {
 
   /* bit array for sieveing */
-  uint8_t *ary = malloc(sizeof(uint8_t) * sieve_size / 8);
+  uint8_t *ary = calloc(sizeof(uint8_t), sieve_size / 8);
 
   if (ary == NULL) 
     perror("failed to allocate space for prime table generation");
@@ -158,15 +158,18 @@ static PrimeTable *gen_prima_table(uint32_t sieve_size) {
 }
 
 /**
- * creat an so called primorial form the first n primes
- * where primorial is 2 * 3 * 5 * ... 
+ * creat an so called primorial 
+ * (a composite number out of a given range of primes)
  */
-void primorial(PrimeTable *primes, mpz_t mpz_primorial, uint32_t n) {
+void primorial(PrimeTable *primes, 
+               mpz_t mpz_primorial, 
+               uint32_t start, 
+               uint32_t end) {
 
   mpz_set_ui(mpz_primorial, 1);
 
   uint32_t i;
-  for (i = 0; i < n; i++) 
+  for (i = start; i < end; i++)
     mpz_mul_ui(mpz_primorial, mpz_primorial, primes->ptr[i]);
 }
 

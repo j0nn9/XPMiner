@@ -5,6 +5,9 @@
 #ifndef __PRIME_TABLE_H__
 #define __PRIME_TABLE_H__
 
+#include <inttypes.h>
+#include <gmp.h>
+
 /**
  * Primtable with len primes
  */
@@ -19,9 +22,12 @@ typedef struct {
 PrimeTable *gen_prima_table(uint32_t sieve_size);
 
 /**
- * creat an so called primorial form the first n primes
- * where primorial is 2 * 3 * 5 * ... 
+ * creat an so called primorial 
+ * (a composite number out of a given range of primes)
  */
-void primorial(PrimeTable *primes, mpz_t mpz_primorial, uint32_t n);
+void primorial(PrimeTable *primes, 
+               mpz_t mpz_primorial, 
+               uint32_t start, 
+               uint32_t end);
 
 #endif /* __PRIME_TABLE_H__ */
