@@ -11,14 +11,7 @@
 #include <inttypes.h>
 #include <gmp.h>
 
-/**
- * exit on error
- */
-#define perror(msg)         \
-do {                        \
-  perror(msg);              \
-  exit(EXIT_FAILURE);       \
-} while (0)
+#include "prime-table.h"
 
 /**
  * Sets the given bit-possition in an byte array
@@ -163,6 +156,21 @@ static PrimeTable *gen_prima_table(uint32_t sieve_size) {
 
   return save_primes(ary, sieve_size);
 }
+
+/**
+ * creat an so called primorial form the first n primes
+ * where primorial is 2 * 3 * 5 * ... 
+ */
+void primorial(PrimeTable *primes, mpz_t mpz_primorial, uint32_t n) {
+
+  mpz_set_ui(mpz_primorial, 1);
+
+  uint32_t i;
+  for (i = 0; i < n; i++) 
+    mpz_mul_ui(mpz_primorial, mpz_primorial, primes->ptr[i]);
+}
+
+
 
 
 #endif /* __PRIME_TABLE_H__ */
