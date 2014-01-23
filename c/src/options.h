@@ -5,12 +5,25 @@
 #ifndef __OPTIONS_H__
 #define __OPTIONS_H__
 
-#include "prime-table.h"
+#include <inttypes.h>
+#include <gmp.h>
+
+#include "main.h"
+
+/**
+ * stucture for storing overall miner statistics
+ */
+struct  MiningStats {
+  uint64_t share;
+  uint64_t rejected;
+  uint64_t stale;
+  uint64_t block;
+};
 
 /**
  * Structure for the options
  */
-typedef struct {
+struct Opts {
    
   /* comand line options */
   int  poolfee;
@@ -23,7 +36,34 @@ typedef struct {
   int  n_sieve_extensions;
   int  n_sieve_percentage;
   int  sievesize;
-  int  n_primes_in_hash;
+  /* number of primes the block header hash should be divisible by */
+  int  n_primes_in_hash;       
+
+  /* num of bytes to preocess in cache (while sieveing) */
+  int cachebytes;
+
+  /* print extended stats */
+  char verbose;
+  
+  /**
+   * number of primes the primorial should be divisible by 
+   * primorial := hash * pn * pn+1 * ... * pn+k
+   *
+   * where pn is the first prime the has is not divisible by
+   * so    n   = n_primes_in_hash + 1
+   * and   n+k = n_primes_in_primorial
+   */
+  int  n_primes_in_primorial; 
+
+  /**
+   * the target chain length to mine
+   */
+  int chain_length;
+
+  /**
+   * the highes index in the primtable to sieve
+   */
+  int max_prime_index;
  
   /* program wide parameters */
  
@@ -33,9 +73,36 @@ typedef struct {
   /* the prime table with the first n primes */
   PrimeTable *primes;
 
-  /* the block header hash as an mpz_t value for integer calculations */
-  mpz_t mpz_hash;
-} Opts;
+  /**
+   * the mpz primorial
+   * the sieve indexes ar factors of this
+   * let H := primorial, and n := sievesize
+   * then the sieve consists out of:
+   * 1. layer 1H, 2H, 3H, 4H, 5H, 6H, ... ,nH
+   * 2. layer 1H, 3H, 5H, 7H, 9H, 11H, ..., 2nH
+   * 3. layer 1H, 5H, 9H, 13H, 17H, 21H ..., 4nH
+   *  
+   *  and so on, layer i has steps of 2^i till 2^i * n * H
+   */
+  mpz_t mpz_primorial;
+
+  /**
+   * the additional prim multiplyers usd in primorial 
+   * (hash = primorial / primorial_multiplyers)
+   */
+  mpz_t mpz_primorial_primes;
+
+  /**
+   * the block header we are mining for
+   */
+  BlockHeader *header;
+
+  /**
+   * Mining statsisticts
+   */
+  MiningStats stats;
+
+};
 
 /**
  * read the comand line options into a Opts struct

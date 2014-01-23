@@ -2,16 +2,13 @@
  * implementation of the default Sieve of Eratosthenes to generat 
  * a prime table including all primes till a given number starting by 2
  */
-#ifndef __PRIME_TABLE_H__
-#define __PRIME_TABLE_H__
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <inttypes.h>
 #include <gmp.h>
 
-#include "prime-table.h"
+#include "main.h"
 
 /**
  * Sets the given bit-possition in an byte array
@@ -37,14 +34,6 @@
  * generate the X**2
  */
 #define POW(X) ((X) * (X))
-
-/**
- * Primtable with len primes
- */
-typedef struct {
-  uint32_t *ptr;
-  uint32_t len;
-} PrimeTable;
 
 /**
  * returns the number of primes in the sive
@@ -118,7 +107,7 @@ static PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 /**
  * 
  */
-PrimeTable *gen_prima_table(uint32_t sieve_size) {
+PrimeTable *gen_prime_table(uint32_t sieve_size) {
 
   /* bit array for sieveing */
   uint8_t *ary = calloc(sizeof(uint8_t), sieve_size / 8);
@@ -166,14 +155,7 @@ void primorial(PrimeTable *primes,
                uint32_t start, 
                uint32_t end) {
 
-  mpz_set_ui(mpz_primorial, 1);
-
   uint32_t i;
   for (i = start; i < end; i++)
     mpz_mul_ui(mpz_primorial, mpz_primorial, primes->ptr[i]);
 }
-
-
-
-
-#endif /* __PRIME_TABLE_H__ */

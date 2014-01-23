@@ -8,18 +8,20 @@
 #include <inttypes.h>
 #include <gmp.h>
 
+#include "main.h"
+
 /**
  * Primtable with len primes
  */
-typedef struct {
+struct PrimeTable {
   uint32_t *ptr;
   uint32_t len;
-} PrimeTable;
+};
 
 /**
  * 
  */
-PrimeTable *gen_prima_table(uint32_t sieve_size);
+PrimeTable *gen_prime_table(uint32_t sieve_size);
 
 /**
  * creat an so called primorial 
