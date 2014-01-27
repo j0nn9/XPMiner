@@ -4,18 +4,41 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <signal.h>
+#include <unistd.h>
 
 #define __USE_GNU
 #include <pthread.h>
 #undef __USE_GNU
 
+#define EXTERN
 #include "main.h"
 
 /**
- * determinates wether the miner should shutdown
+ * thread to output statsus informations
  */
-static char running = 1;
+void *stats_thread(void *thread_args) {
+  
+  MinerArgs *stats   = (MinerArgs *) thread_args;
+  Opts *opts         = stats[0].opts;
+  uint64_t n_threads = stats[0].n_threads;
+
+  /* wait untill mining started */
+  uint64_t i;
+  for (i = 0; i < n_threads; i++) 
+    while (running && stats[i].mine != MINING_STARTED)
+      pthread_yield();
+
+  /* loop until shutdown */
+  while (running) {
+
+    sleep(opts->stats_interval);
+    print_stats(stats, n_threads);
+  }
+
+  return NULL;
+}
 
 /**
  * the actual primecoin miner which starts the sieve and so on
@@ -34,8 +57,10 @@ void *primcoin_miner(void *thread_args) {
   init_sieve(sieve, opts);
 
   /* waiting to get started */
-  while (*args->mine == 0)
+  while (running && args->mine == MINING_WAIT)
     pthread_yield();
+
+  args->mine = MINING_STARTED;
 
   /* start mining */
   while (running) {
@@ -48,32 +73,30 @@ void *primcoin_miner(void *thread_args) {
       args->new_work = 0;
 
       /* reinit sieve */
-      reinit_sieve(sieve, opts);
+      sieve_set_header(sieve, opts->header);
 
       sieve->header.nonce = args->id;
 
       pthread_mutex_unlock(&args->mutex);
-    } else {
+    } 
 
-      /* reinit sieve */
-      reinit_sieve(sieve, opts);
-    }
+    /* reinit sieve */
+    reinit_sieve(sieve);
 
     /* generate a hash divisible by the hash primorial */
     mine_header_hash(sieve, args->n_threads);
 
-    /* generate the primorial */
-    mpz_set(mpz_primorial, sieve->mpz_hash);
-    primorial(sieve->primes, 
-              mpz_primorial, 
-              opts->n_primes_in_hash + 1, 
-              opts->n_primes_in_primorial);
+    /* calculate the primorial */
+    mpz_mul(mpz_primorial, sieve->mpz_hash, sieve->mpz_primorial_primes);
 
     /* run the sieve and chech the candidates */
     sieve_run(sieve, mpz_primorial);
   }
 
+  args->mine = MINING_STOPPED;
   mpz_clear(mpz_primorial);
+
+  free_sieve(sieve);
 
   return NULL;
 }
@@ -91,14 +114,18 @@ void main_thread(Opts * opts) {
 
   int i;
 
-  /* indecates that the miner can start */
-  char mine = 0;
-
   for (i = 0; i < opts->genproclimit; i++) {
-    args[i].mine = &mine;
+    args[i].mine      = MINING_WAIT;
+    args[i].opts      = opts;
+    args[i].n_threads = opts->genproclimit;
+    args[i].id        = i;
+
     pthread_mutex_init(&args[i].mutex, NULL);
     pthread_create(&threads[i], NULL, primcoin_miner, (void *) &args[i]);
   }
+
+  pthread_t stats;
+  pthread_create(&stats, NULL, stats_thread, (void *) args);
 
   /* connect to pool */
   connect_to(opts);
@@ -109,9 +136,11 @@ void main_thread(Opts * opts) {
     switch (recv_work(opts)) {
       
       case WORK_MSG: 
-        mine = 1;
-
         for (i = 0; i < opts->genproclimit; i++) {
+          
+          if (args[i].mine == MINING_WAIT)
+            args[i].mine = MINING_START;
+
           pthread_mutex_lock(&args[i].mutex);
 
           args[i].new_work = 1;
@@ -127,12 +156,16 @@ void main_thread(Opts * opts) {
 
       /* reconnect on failur */
       default:
-        connect_to(opts);
+        if (running)
+          connect_to(opts);
 
     }
   }
 
-  /* shutdown threads */
+  /* shutdown stats thread */
+  pthread_join(stats, NULL);
+
+  /* shutdown miner threads */
   for (i = 0; i < opts->genproclimit; i++) {
     args[i].new_work = 0;
     args[i].sieve.active = 0;
@@ -150,16 +183,31 @@ void main_thread(Opts * opts) {
  * signal handler to exit programm softly
  */
 void soft_shutdown(int signum) {
+  
+  /* not used */
   (void) signum;
+
+  static int shutdown = 0;
   running = 0;
 
-  info_msg("shuting down...\n");
+  if (shutdown >= 5) {
+    info_msg("\rOK im going to KILL myself!!!\n");
+    kill(0, SIGKILL);
+  }
+
+  info_msg("\rshuting down...\n");
+  shutdown++;
 }
 
 /**
  * Start reading here
  */
 int main(int argc, char *argv[]) {
+
+   /**
+    * indecates that the programm shoud runn
+    */
+   running = 1;
 
   /* set signal handler for soft shutdown */
   struct sigaction action;
@@ -171,7 +219,7 @@ int main(int argc, char *argv[]) {
 
   /* continue mining if terminal lost connection */
   signal(SIGHUP,  SIG_IGN);
-  signal(SIGPIPE, SIG_IGN);
+  signal(SIGPIPE, SIG_IGN); // send if keepalive probe failed
   signal(SIGQUIT, SIG_IGN);
 
   /* read the comadline options, and initialize program wide parameters */
@@ -189,7 +237,11 @@ int main(int argc, char *argv[]) {
          "  n_sieve_extensions: %d\n"
          "  n_sieve_percentage: %d\n"
          "  sievesize:          %d\n"
-         "  n_primes_in_hash:   %d\n",
+         "  n_primes_in_hash:   %d\n"
+         "  cachebits:          %d\n"
+         "  verbose:            %d\n"
+         "  stats_interval:     %d\n"
+         "  poolshare:          %d\n",
          opts->poolfee,
          opts->poolip,
          opts->poolport,
@@ -200,7 +252,14 @@ int main(int argc, char *argv[]) {
          opts->n_sieve_extensions,
          opts->n_sieve_percentage,
          opts->sievesize,
-         opts->n_primes_in_hash);
+         opts->n_primes_in_hash,
+         opts->cachebits,
+         opts->verbose,
+         opts->stats_interval,
+         opts->poolshare);
+
+  /* start mining */
+  main_thread(opts);
 
   free_opts(opts);
   free(opts);

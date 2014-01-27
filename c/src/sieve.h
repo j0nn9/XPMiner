@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <gmp.h>
 
 #include "main.h"
@@ -20,7 +21,7 @@
  * the sieve word type and bit length
  */
 #define sieve_t uint32_t
-#define word_len 32
+#define word_bits 32
 #define word_max 0xFFFFFFFFu
 
 #else
@@ -29,7 +30,7 @@
  * the sieve word type and bit length
  */
 #define sieve_t uint64_t
-#define word_len 64
+#define word_bits 64
 #define word_max 0xFFFFFFFFFFFFFFFFLu
 
 #endif
@@ -54,7 +55,7 @@ struct Sieve {
   sieve_t *cc1; /* bit vektor for the chain candidates of the first kind */
   sieve_t *cc2; /* bit vektor for the chain candidates of the second kind */
   sieve_t *twn; /* bit vektor for the bi-twin chain  candidates */
-  sieve_t *final; /* final set fo candiates */
+  sieve_t *all; /* all set fo candiates */
 
   /** 
    * the cc1 and cc2 multiplicators (for each layer) 
@@ -65,11 +66,14 @@ struct Sieve {
 
   uint32_t chain_length; /* target chain length */
 
+  /* target share length */
+  uint32_t poolshare;
+
   /* the byte length of the candidate bit vektor */
-  uint64_t candidate_bytes;
+  uint32_t candidate_bytes;
 
   /* the sieve length in sieve words */
-  uint64_t size;
+  uint32_t size;
 
   /* the number of sieve extensions TODO explain */
   uint32_t extensions;
@@ -93,13 +97,19 @@ struct Sieve {
   PrimeTable *primes;
 
   /* the nuber of bytes to load in cache */
-  uint32_t cache_bytes;
+  uint32_t cache_bits;
+
+  /* the array (sieve_t) length for the bit vektors */
+  uint32_t sieve_words;
 
   /* prime test parameters */
   TestParams test_params;
 
   /* reminder for mining the header hash */
   mpz_t mpz_reminder;
+
+  /* tmp value */
+  mpz_t mpz_tmp;
 
   /* the block header hash as an mpz_t value for integer calculations */
   mpz_t mpz_hash;
@@ -109,9 +119,6 @@ struct Sieve {
 
   /* mpz value for testing an prime origin */
   mpz_t mpz_test_origin;
-
-  /* the primorial */
-  mpz_t mpz_primorial;
 
   /**
    * the additional prim multiplyers usd in primorial 
@@ -148,16 +155,25 @@ struct Sieve {
 
 };
 
+/**
+ * sets a new header 
+ */
+void sieve_set_header(Sieve *sieve, BlockHeader *header);
 
 /** 
  * reinitilaizes an given sieve
  */
-void reinit_sieve(Sieve *sieve, const Opts *opts);
+void reinit_sieve(Sieve *sieve);
 
 /**
  * initializes a given sieve for the first
  */
 void init_sieve(Sieve *sieve, Opts *const opts);
+
+/**
+ * frees all used resauces of the sieve
+ */
+void free_sieve(Sieve *sieve);
 
 /**
  * run the sieve

@@ -19,6 +19,6 @@ void info_msg(char *format, ...);
 /**
  * generate and print statistics
  */ 
-void print_stats(MiningStats stats, Sieve *sieves, uint32_t n_threads);
+void print_stats(MinerArgs *stats, uint32_t n_threads);
 
 #endif /* __VERBOSE_H__ */

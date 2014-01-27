@@ -46,6 +46,12 @@ typedef struct PrimeTable PrimeTable;
 #define DEFAULT_NUM_PRIMES_IN_HASH 4
 
 /**
+ * the default number of primes the primorial
+ * should be divisible by
+ */
+#define DEFAULT_NUM_PRIMES_IN_PRIMORIAL 4
+
+/**
  * the default chain length to mine
  */
 #define DEFAULT_CHAIN_LENGTH 7
@@ -53,12 +59,32 @@ typedef struct PrimeTable PrimeTable;
 /**
  * the default number of bytes to preocess in chae while sieveing
  */
-#define DEFAULT_CACHE_BYTES 224000
+#define DEFAULT_CACHE_BITS 224000
 
 /**
  * the maximum chain length to deal with (word recors is 17)
  */
 #define MAX_CHAIN_LENGTH 32
+
+/**
+ * default intervall (in seconds) to output status informations
+ */
+#define DEFAULT_STATS_INTERVAL 1
+
+/**
+ * default minimum chainlength whicht will be submitted as share to the pool
+ */
+#define DEFAULT_POOL_SHARE 7
+
+/**
+ * determinates wether the programm should shutdown
+ */
+#ifndef EXTERN
+#define EXTERN extern
+#endif
+EXTERN char running;
+
+
 
 /**
  * include all other headers
@@ -80,8 +106,14 @@ struct MinerArgs {
   uint32_t id;
   uint32_t n_threads;
   char     new_work;
-  char     *mine;
+  char     mine;
   pthread_mutex_t mutex;
 };
+
+/* the differnt stats of mining */
+#define MINING_WAIT    0
+#define MINING_START   1
+#define MINING_STARTED 2
+#define MINING_STOPPED 3
 
 #endif /* __MAIN_H__ */

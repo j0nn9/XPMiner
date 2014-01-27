@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdio.h>
+#include <openssl/sha.h>
 
 #include "main.h"
 
@@ -27,6 +28,8 @@
 #define CHAINLENGTH   13
 #define CACHEBYTES    14
 #define VERBOSE       15
+#define STATSINTERVAL 16
+#define POOLSHARE     17
 
 /**
  * the avilabe comand line options
@@ -38,16 +41,17 @@ static struct option long_options[] = {
   { "pooluser",      required_argument, 0, POOLUSER      },
   { "poolpassword",  required_argument, 0, POOLPASSWORD  },
   { "genproclimit",  required_argument, 0, GENPROCLIMIT  },
-  { "genproclimit",  required_argument, 0, MINERID       },
-  { "nsieveext",     required_argument, 0, NSIEVEEXT     },
+  { "minerid",       required_argument, 0, MINERID       },
   { "nsieveext",     required_argument, 0, NSIEVEEXT     },
   { "nsievepercent", required_argument, 0, NSIEVEPERCENT },
   { "sievesize",     required_argument, 0, SIEVESIZE     },
   { "nprimesinhash", required_argument, 0, NPRIMESINHASH },
   { "nprimesinprim", required_argument, 0, NPRIMESINPRIM },
   { "chainlength",   required_argument, 0, CHAINLENGTH   },
-  { "cachebytes",    required_argument, 0, CACHEBYTES    },
+  { "cachebits",    required_argument, 0, CACHEBYTES    },
   { "verbose",       no_argument      , 0, VERBOSE       },
+  { "statsinterval", required_argument, 0, STATSINTERVAL },
+  { "poolshare",     required_argument, 0, POOLSHARE     },
   { 0,               0,                 0, 0             }
 };
 
@@ -72,15 +76,53 @@ static inline void init_program_parameters(Opts *opts) {
             0, 
             opts->n_primes_in_hash);
 
+  /* generate the primorial primes */
+  mpz_set_ui(opts->mpz_primorial_primes, 1);
+  primorial(opts->primes, 
+            opts->mpz_primorial_primes, 
+            opts->n_primes_in_hash, 
+            opts->n_primes_in_primorial);
+
   /* calculate the higest prime index to sieve */
   opts->max_prime_index = (opts->primes->len * opts->n_sieve_percentage) / 100;
 
+  /* chachebits need to be a multiple of word_bits */
+  opts->cachebits = (opts->cachebits / word_bits) * word_bits;
+
+  if (opts->cachebits == 0)
+    opts->cachebits = word_bits;
+
+  /**
+   * sive size need to be a multiplie of 2 * cachebits 
+   * (extensions using oly the half array)
+   */
+  opts->sievesize = (opts->sievesize / (2 * opts->cachebits)) *
+                    (2 * opts->cachebits);
+
+  if (opts->sievesize == 0)
+    opts->sievesize = 2 * opts->cachebits;
+
+  opts->sieve_words = (opts->sievesize / word_bits);
+
+
   /* highes used index = max_prime_index - 1 */
-  while (opts->primes->ptr[opts->max_prime_index - 1] >= 
-         opts->sievesize * sizeof(sieve_t) * 8) {
+  while (opts->primes->ptr[opts->max_prime_index - 1] >= // TODO cacl sievesize depending on cachesize hire
+         (uint32_t) opts->cachebits) {
     
     opts->max_prime_index--;
   }
+
+  /* encrypt the password with sha1 */
+  uint32_t *pwd_hash = (uint32_t *) SHA1((unsigned char *) opts->poolpassword, 
+                                         strlen(opts->poolpassword),
+                                         NULL);
+
+  opts->poolpassword = calloc(sizeof(char), 17);
+
+  sprintf(opts->poolpassword, 
+          "%08x%08x", 
+          pwd_hash[0] ^ pwd_hash[1] ^ pwd_hash[4],
+          pwd_hash[2] ^ pwd_hash[3] ^ pwd_hash[4]);
 }
 
 /**
@@ -94,6 +136,8 @@ void free_opts(Opts *opts) {
 
   free(opts->primes->ptr);
   free(opts->primes);
+  free(opts->poolpassword);
+  free(opts->header);
 }
 
 
@@ -174,11 +218,19 @@ Opts *init_opts(int argc, char *argv[]) {
         break;
 
       case CACHEBYTES:
-        opts->cachebytes = atoi(optarg);
+        opts->cachebits = atoi(optarg);
         break;
 
       case VERBOSE:
         opts->verbose = 1;
+        break;
+
+      case STATSINTERVAL:
+        opts->stats_interval = atoi(optarg);
+        break;
+
+      case POOLSHARE:
+        opts->poolshare = atoi(optarg);
         break;
     }
   }
@@ -215,13 +267,19 @@ Opts *init_opts(int argc, char *argv[]) {
     opts->n_primes_in_hash = DEFAULT_NUM_PRIMES_IN_HASH;
 
   if (opts->n_primes_in_primorial <= 0)
-    opts->n_primes_in_primorial = DEFAULT_NUM_PRIMES_IN_HASH;
+    opts->n_primes_in_primorial = DEFAULT_NUM_PRIMES_IN_PRIMORIAL;
 
   if (opts->chain_length <= 0)
     opts->chain_length = DEFAULT_CHAIN_LENGTH;
 
-  if (opts->cachebytes <= 0)
-    opts->cachebytes = DEFAULT_CACHE_BYTES;
+  if (opts->cachebits <= 0)
+    opts->cachebits = DEFAULT_CACHE_BITS;
+
+  if (opts->stats_interval <= 0)
+    opts->stats_interval = DEFAULT_STATS_INTERVAL;
+
+  if (opts->poolshare <= 0)
+    opts->poolshare = DEFAULT_POOL_SHARE;
 
 
   /* init promgram wide parameters */

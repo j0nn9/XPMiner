@@ -4,6 +4,8 @@
  * (new transactions are saved into a block,
  *  but for poolmining we only need the block header)
  */
+#include <stdio.h>
+#include <gmp.h>
 
 #include "main.h"
 
@@ -90,75 +92,5 @@ void mine_header_hash(Sieve *sieve, uint32_t n_threads) {
     /* reminder = hash % hash_primorial */
     mpz_mod(sieve->mpz_reminder, sieve->mpz_hash, sieve->mpz_hash_primorial);
     
-  } while (mpz_cmp_ui(sieve->mpz_reminder, 0));
+  } while (running && mpz_cmp_ui(sieve->mpz_reminder, 0));
 }
-
-
-#if 0
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-
-/**
- * testing
- */ 
-static void print_hash(uint8_t *hash) {
-
-  uint32_t i;
-  for (i = 0; i < SHA256_DIGEST_LENGTH; i++) 
-    printf("%02x", hash[i]);
-}
-
-int main(int argc, char *argv[]) {
-  
-  if (argc != 2) {
-    printf("%s <file to read the header from>\n", argv[0]);
-    exit(1);
-  }
-
-  BlockHeader header;
-
-  int fd = open(argv[1], O_RDONLY);
-
-  read(fd, &header.version, 4);
-  read(fd, &header.hash_prev_block, HASH_LENGTH);
-  read(fd, &header.hash_merkle_root, HASH_LENGTH);
-  read(fd, &header.time, 4);
-  read(fd, &header.min_difficulty, 4);
-  read(fd, &header.nonce, 4);
-
-  uint8_t head_hash[SHA256_DIGEST_LENGTH];
-  get_header_hash(&header, head_hash);
-
-  mpz_t hash1, hash2, hash3;
-  mpz_init(hash1);
-  mpz_init(hash2);
-  mpz_init(hash3);
-
-  mpz_set_sha256(hash1, header.hash_prev_block);
-  mpz_set_sha256(hash2, header.hash_merkle_root);
-  mpz_set_sha256(hash3, head_hash);
-
-
-  printf("Header:\n");
-  printf("  version %" PRIu32 "\n  hash_prev_block ", header.version);
-  mpz_out_str(stdout, 10, hash1);
-  printf("\n  hash_merkle_root ");
-  mpz_out_str(stdout, 10, hash2);
-  printf("\n  time %" PRIu32 "\n"
-         "  min_difficulty %" PRIu32 "\n"
-         "  nonce %" PRIu32 "\n",
-         header.time,
-         header.min_difficulty,
-         header.nonce);
-
-  printf("\nheader hash: ");
-  print_hash(head_hash);
-  printf("\n");
-
-  return 0;
-}
-#endif

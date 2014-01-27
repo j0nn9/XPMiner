@@ -1,12 +1,13 @@
 /**
- * my own implementation of a primecoin miner
+ * TODO chech test test, something seams to be worng, as son as a 3-chain is found no more 2 chains ar found, also no 1 chains are found, that is wered
+ * TODO einster und zweite chains bleiben irgendwann stehen und ändern sich nicht mehr wieso???
  */
 #ifndef __PRIMECOIN_H__
 #define __PRIMECOIN_H__
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <gmp.h>
+#include <stdlib.h>
 #include <inttypes.h>
 
 #include "main.h"
@@ -22,8 +23,8 @@ static const uint32_t N_FRACTIONAL_BITS = 24;
 /**
  * bitmasks for the fractional and chain part of the difficulty
  */
-static const uint32_t TARGET_FRACTIONAL_MASK = 16777215; //(1u << N_FRACTIONAL_BITS) - 1;
-static const uint32_t TARGET_LENGTH_MASK = 4261412864; //~TARGET_FRACTIONAL_MASK;
+static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;//(1u << N_FRACTIONAL_BITS) - 1;
+static const uint32_t TARGET_LENGTH_MASK = 0xFF000000; //~TARGET_FRACTIONAL_MASK;
 
 /**
  * increases a given difficulty by 1
@@ -50,7 +51,7 @@ static const uint32_t TARGET_LENGTH_MASK = 4261412864; //~TARGET_FRACTIONAL_MASK
 /**
  * returns the fractional length for the given difficulty
  */
-#define fractional_length(difficulty) (difficulty & N_FRACTIONAL_BITS)
+#define fractional_length(difficulty) (difficulty & TARGET_FRACTIONAL_MASK)
 
 /**
  * helper varibales for primality testing
@@ -114,8 +115,10 @@ static inline uint32_t get_fractional_length(mpz_t mpz_p,
 
   uint32_t n_fractional_length = mpz_get_ui(params->mpz_e);
 
+#ifdef DEBUG
   if (n_fractional_length >= (1u << N_FRACTIONAL_BITS))
     printf("[EE] FermatProbablePrimalityTest() : fractional assert");
+#endif
 
   return n_fractional_length;
 }
@@ -131,7 +134,7 @@ static inline char fermat_test(mpz_t mpz_p, TestParams *params) {
   /* res = 2^tmp mod p */
   mpz_powm(params->mpz_r, params->mpz_two, params->mpz_e, mpz_p);
 
-  if (mpz_cmp_ui(params->mpz_r, 1L) == 0)
+  if (mpz_cmp_ui(params->mpz_r, 1) == 0)
     return 1;
 
   return 0;

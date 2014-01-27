@@ -40,10 +40,16 @@ struct Opts {
   int  n_primes_in_hash;       
 
   /* num of bytes to preocess in cache (while sieveing) */
-  int cachebytes;
+  int cachebits;
 
   /* print extended stats */
   char verbose;
+
+  /* output stats every n seconds */
+  uint32_t stats_interval;
+
+  /* min chainlength to submit to the pool */
+  int poolshare;
   
   /**
    * number of primes the primorial should be divisible by 
@@ -101,6 +107,11 @@ struct Opts {
    * Mining statsisticts
    */
   MiningStats stats;
+
+  /**
+   * number of sieve words, since sieve size is the bit size
+   */
+  uint32_t sieve_words;
 
 };
 
