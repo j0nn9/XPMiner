@@ -231,9 +231,6 @@ void init_sieve(Sieve *sieve, Opts *const opts) {
   sieve->ext_cc2 = malloc(sieve->candidate_bytes * sieve->extensions);
   sieve->ext_twn = malloc(sieve->candidate_bytes * sieve->extensions);
 
-  sieve->cc1_layer = malloc(sieve->candidate_bytes);
-  sieve->cc2_layer = malloc(sieve->candidate_bytes);
-
   /* for cc1 and cc2 chains, for each layer */
   sieve->cc1_muls = malloc(sizeof(uint32_t *) * 
                            sieve->layers * 
@@ -298,7 +295,6 @@ static inline void sieve_from_to(const Sieve *const sieve,
                                  const uint32_t end,
                                  const uint32_t layer) {
   /* wipe the array */
-  if (start >= end) return; // TODO remove
   memset(candidates + (start / word_bits), 0, ((end - start) / 8));
 
   uint32_t i;
@@ -326,7 +322,7 @@ static inline void sieve_from_to(const Sieve *const sieve,
     }
 
     /* save the factor for the next round */
-    //multipliers[i * sieve->layers + layer] = factor;
+    multipliers[i * sieve->layers + layer] = factor;
   }
 }
 
@@ -424,6 +420,8 @@ static inline void test_candidates(Sieve *const sieve,
  */
 void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
 
+  uint64_t start_time = gettime_usec();
+
   uint32_t *const cc1_muls       = sieve->cc1_muls;
   uint32_t *const cc2_muls       = sieve->cc2_muls;
   sieve_t *const twn             = sieve->twn;
@@ -431,8 +429,6 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
   sieve_t *const cc1             = sieve->cc1;
   sieve_t *const all             = sieve->all;
   sieve_t *const tmp             = sieve->tmp;
-  sieve_t *const cc1_layer       = sieve->tmp;
-  sieve_t *const cc2_layer       = sieve->tmp;
   sieve_t *const ext_twn         = sieve->ext_twn;
   sieve_t *const ext_cc2         = sieve->ext_cc2;
   sieve_t *const ext_cc1         = sieve->ext_cc1;
@@ -485,133 +481,10 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     }
   }
 
+  printf("[DD] calulating mulls: %" PRIu64 "\n", gettime_usec() - start_time);
+  start_time = gettime_usec();
 
-#if 0
-  // Process the array in chunks that fit the L1 cache
-  const unsigned int sieve_rounds = (sieve->size + sieve->cache_bits - 1) / sieve->cache_bits;
 
-  // Calculate the number of CC1 and CC2 layers needed for BiTwin candidates
-  const unsigned int twn_cc1_layers = (sieve->chain_length + 1) / 2;
-  const unsigned int twn_cc2_layers = sieve->chain_length / 2;
-
-  // Only 50% of the array is used in extensions
-  const unsigned int ext_min_multi = sieve->size / 2;
-  const unsigned int ext_min_word = ext_min_multi / word_bits;
-
-  // Loop over each array one at a time for optimal L1 cache performance
-  unsigned int j;
-  for (j = 0; j < sieve_rounds; j++)
-  {
-    const unsigned int min_multi = sieve->cache_bits * j;
-    const unsigned int max_multi = min(sieve->cache_bits * (j + 1), sieve->size);
-    const unsigned int used_ext_min_multi = max(min_multi, ext_min_multi);
-    const unsigned int min_word = min_multi / word_bits;
-    const unsigned int max_word = (max_multi + word_bits - 1) / word_bits;
-    const unsigned int used_ext_min_word = max(min_word, ext_min_word);
-    if (!sieve->active)
-      break;  // new block
-
-    // Loop over the layers
-    unsigned int l;
-    for (l = 0; l < sieve->layers; l++) 
-    {
-      if (!sieve->active)
-        break;  // new block
-      if (l < sieve->chain_length)
-      {
-        sieve_from_to(sieve, cc1_layer, cc1_muls, min_multi, max_multi, l);
-        sieve_from_to(sieve, cc2_layer, cc2_muls, min_multi, max_multi, l);
-      }
-      else
-      {
-        // Optimize: First halves of the arrays are not needed in the extensions
-        sieve_from_to(sieve, cc1_layer, cc1_muls, used_ext_min_multi, max_multi, l);
-        sieve_from_to(sieve, cc2_layer, cc2_muls, used_ext_min_multi, max_multi, l);
-      }
-
-      // Apply the layer to the primary sieve arrays
-      if (l < sieve->chain_length)
-      {
-        if (l < twn_cc2_layers)
-        {
-          unsigned int w;
-          for (w = min_word; w < max_word; w++)
-          {
-            cc1[w] |= cc1_layer[w];
-            cc2[w] |= cc2_layer[w];
-            twn[w] |= cc1_layer[w] | cc2_layer[w];
-          }
-        }
-        else if (l < twn_cc1_layers)
-        {
-          unsigned int w;
-          for (w = min_word; w < max_word; w++)
-          {
-            cc1[w] |= cc1_layer[w];
-            cc2[w] |= cc2_layer[w];
-            twn[w] |= cc1_layer[w];
-          }
-        }
-        else
-        {
-          unsigned int w;
-          for (w = min_word; w < max_word; w++)
-          {
-            cc1[w] |= cc1_layer[w];
-            cc2[w] |= cc2_layer[w];
-          }
-        }
-      }
-
-      // Apply the layer to extensions
-      unsigned int e;
-      for (e = 0; e < sieve->extensions; e++)
-      {
-        const unsigned int layer_offset = e + 1;
-        if (l >= layer_offset && l < sieve->chain_length + layer_offset)
-        {
-          const unsigned int ext_layer = l - layer_offset;
-          sieve_t *p_ext_cc1 = ext_cc1 + e * sieve->sieve_words;
-          sieve_t *p_ext_cc2 = ext_cc2 + e * sieve->sieve_words;
-          sieve_t *p_ext_twn = ext_twn + e * sieve->sieve_words;
-          if (ext_layer < twn_cc2_layers)
-          {
-            unsigned int w;
-            for (w = used_ext_min_word; w < max_word; w++)
-            {
-              p_ext_cc1[w] |= cc1_layer[w];
-              p_ext_cc2[w] |= cc2_layer[w];
-              p_ext_twn[w] |= cc1_layer[w] | cc2_layer[w];
-            }
-          }
-          else if (ext_layer < twn_cc1_layers)
-          {
-            unsigned int w;
-            for (w = used_ext_min_word; w < max_word; w++)
-            {
-              p_ext_cc1[w] |= cc1_layer[w];
-              p_ext_cc2[w] |= cc2_layer[w];
-              p_ext_twn[w] |= cc1_layer[w];
-            }
-          }
-          else
-          {
-            unsigned int w;
-            for (w = used_ext_min_word; w < max_word; w++)
-            {
-              p_ext_cc1[w] |= cc1_layer[w];
-              p_ext_cc2[w] |= cc2_layer[w];
-            }
-          }
-        }
-      }
-    }
-  }
-  
-
-  (void) tmp;
-  uint32_t e;
-#else
   /* calculate the wi-twin cc1 and cc2 layers */
   const uint32_t twn_cc1_layers = (sieve->chain_length + 1) / 2 - 1;
   const uint32_t twn_cc2_layers = sieve->chain_length       / 2 - 1;
@@ -712,26 +585,12 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
             ptr[w] |= tmp[w];
           }
         }
-#if 1
+
         /* copy layers to the extended twn candidates */
         if ((l - (e + 1)) == twn_cc2_layers) {
           uint32_t offset = i / word_bits + e * sieve->sieve_words;
           memcpy(ext_twn + offset, ext_cc2 + offset, sieve->cache_bits / 8);
         }
-#else
-
-        if (e < l && l <= e + sieve->chain_length && (l - (e + 1)) <= twn_cc2_layers) {
-     
-          sieve_t *ptr = ext_twn + e * sieve->sieve_words;
-     
-          for (w = i / word_bits; 
-               w < ((i + sieve->cache_bits) / word_bits); 
-               w++) {
-
-            ptr[w] |= tmp[w];
-          }
-        }
-#endif
       }
     }
   }
@@ -779,8 +638,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
             ptr[w] |= tmp[w];
           }
         }
-#if 1 
-        /* copy layers to the extended twn candidates */  // TODO es scheint das die anzahl an treffern richtig ist wenn ich hier das +1 endferne weiter forschen pb das stimmt und wen ja wieso und ob das dann auch mit den treffern an richtigen chains übereinstimmt
+        /* copy layers to the extended twn candidates */ 
         if ((l - (e + 1)) == twn_cc1_layers) {
           sieve_t *ptr_cc1 = ext_cc1 + e * sieve->sieve_words;
           sieve_t *ptr_twn = ext_twn + e * sieve->sieve_words;
@@ -792,24 +650,12 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
             ptr_twn[w] |= ptr_cc1[w];
           }
         }
-#else
-
-        if (e < l && l <= e + sieve->chain_length && (l - (e + 1)) <= twn_cc1_layers) {
-     
-          sieve_t *ptr = ext_twn + e * sieve->sieve_words;
-     
-          for (w = i / word_bits; 
-               w < ((i + sieve->cache_bits) / word_bits); 
-               w++) {
-
-            ptr[w] |= tmp[w];
-          }
-        }
-#endif
       }
     }
   }
-#endif
+
+  printf("[DD] sieveing: %" PRIu64 "\n", gettime_usec() - start_time);
+  start_time = gettime_usec();
 
 
   /* create the final set of candidates */
@@ -829,27 +675,10 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     /* create the final set of candidates */
     for (i = sieve->sieve_words / 2; i < sieve->sieve_words; i++) 
       all[i] = ptr_cc1[i] & ptr_cc2[i] & ptr_twn[i];
-#if 0
-    uint32_t x = 0,y= 0,z=0;
-    for (i = sieve->sieve_words / 2; i < sieve->sieve_words; i++) {
-      
-      sieve_t n;
-      for (n = 1; n != 0; n <<= 1) {
-        
-        if ((ptr_cc1[i] & n) == 0)
-          x++;
 
-        if ((ptr_cc2[i] & n) == 0)
-          y++;
-
-        if ((ptr_twn[i] & n) == 0)
-          z++;
-      }
-
-    }
-    printf("xcc1 %u, xcc2 %u, xtwn %u\n", x,y,z);
-#endif
     /* run the feramt test on the remaining candidates */
     test_candidates(sieve, ptr_cc1, ptr_twn, mpz_primorial, e + 1);
   }
+
+  printf("[DD] testing : %" PRIu64 "\n", gettime_usec() - start_time);
 }
