@@ -98,6 +98,52 @@ void print_sieve(Sieve *sieve) {
 }
 
 /**
+ * Extended Euclidean algorithm to calculate the inverse of 
+ * a in finite field defined by p
+ */
+static inline uint32_t invert(const uint32_t a, const uint32_t p) {
+
+  int rem0 = p, rem1 = a % p, rem2;
+  int aux0 = 0, aux1 = 1, aux2;
+  int quotient, inverse;
+
+  for (;;) {
+
+    if (rem1 <= 1) {
+    
+      inverse = aux1;
+      break;
+    }
+
+    rem2     = rem0 % rem1;
+    quotient = rem0 / rem1;
+    aux2     = -quotient * aux1 + aux0;
+
+    if (rem2 <= 1) {
+    
+      inverse = aux2;
+      break;
+    }
+
+    rem0     = rem1 % rem2;
+    quotient = rem1 / rem2;
+    aux0     = -quotient * aux2 + aux1;
+
+    if (rem0 <= 1) {
+    
+      inverse = aux0;
+      break;
+    }
+
+    rem1     = rem2 % rem0;
+    quotient = rem2 / rem0;
+    aux1     = -quotient * aux0 + aux2;
+  }
+
+  return (inverse + p) % p;
+}
+
+/**
  * sets a new header 
  */
 void sieve_set_header(Sieve *sieve, BlockHeader *header) {
@@ -112,10 +158,11 @@ void reinit_sieve(Sieve *sieve) {
 
   sieve->active = 1;
 
-  memset(sieve->cc1,   0, sieve->candidate_bytes);
-  memset(sieve->cc2,   0, sieve->candidate_bytes);
-  memset(sieve->twn,   0, sieve->candidate_bytes);  // TODO should not be neccesary
-  memset(sieve->all,   0, sieve->candidate_bytes);  // TODO should not be neccesary
+  memset(sieve->cc1, 0, sieve->candidate_bytes);
+  memset(sieve->cc2, 0, sieve->candidate_bytes);
+
+  memset(sieve->ext_cc1, 0, sieve->candidate_bytes * sieve->extensions);
+  memset(sieve->ext_cc2, 0, sieve->candidate_bytes * sieve->extensions);
 
   /* for cc1 and cc2 chains, for each layer */
   memset(sieve->cc1_muls, 0xFF, sizeof(uint32_t *) * 
@@ -170,10 +217,15 @@ void init_sieve(Sieve *sieve, Opts *const opts) {
   sieve->size = opts->sievesize;
   sieve->candidate_bytes = sizeof(sieve_t) * sieve->sieve_words;
   
-  sieve->cc1   = malloc(sieve->candidate_bytes);
-  sieve->cc2   = malloc(sieve->candidate_bytes);
-  sieve->twn   = malloc(sieve->candidate_bytes);
-  sieve->all   = malloc(sieve->candidate_bytes);
+  sieve->cc1 = malloc(sieve->candidate_bytes);
+  sieve->cc2 = malloc(sieve->candidate_bytes);
+  sieve->twn = malloc(sieve->candidate_bytes);
+  sieve->all = malloc(sieve->candidate_bytes);
+  sieve->tmp = malloc(sieve->candidate_bytes);
+
+  sieve->ext_cc1 = malloc(sieve->candidate_bytes * sieve->extensions);
+  sieve->ext_cc2 = malloc(sieve->candidate_bytes * sieve->extensions);
+  sieve->ext_twn = malloc(sieve->candidate_bytes * sieve->extensions);
 
   /* for cc1 and cc2 chains, for each layer */
   sieve->cc1_muls = malloc(sizeof(uint32_t *) * 
@@ -187,6 +239,22 @@ void init_sieve(Sieve *sieve, Opts *const opts) {
   init_test_params(&sieve->test_params);
 
   sieve->stats.start_time = gettime_usec();
+
+  /**
+   * create the inverses of two for all used primes
+   */
+  uint32_t i;
+  sieve->two_inverses = malloc(sizeof(uint32_t) * sieve->primes->len);
+  for (i = 0; i < sieve->primes->len; i++) {
+    
+    sieve->two_inverses[i] = invert(2, sieve->primes->ptr[i]);
+    
+    if (sieve->int64_arithmetic == 0 &&
+        UINT32_MAX / sieve->two_inverses[i] < sieve->primes->ptr[i]) {
+
+      sieve->int64_arithmetic = i;
+    }
+  }
 }
 
 /**
@@ -213,60 +281,18 @@ void free_sieve(Sieve *sieve) {
 }
 
 /**
- * Extended Euclidean algorithm to calculate the inverse of 
- * a in finite field defined by p
- */
-static inline uint32_t invert(const uint32_t a, const uint32_t p) {
-
-  int rem0 = p, rem1 = a % p, rem2;
-  int aux0 = 0, aux1 = 1, aux2;
-  int quotient, inverse;
-
-  for (;;) {
-
-    if (rem1 <= 1) {
-    
-      inverse = aux1;
-      break;
-    }
-
-    rem2     = rem0 % rem1;
-    quotient = rem0 / rem1;
-    aux2     = -quotient * aux1 + aux0;
-
-    if (rem2 <= 1) {
-    
-      inverse = aux2;
-      break;
-    }
-
-    rem0     = rem1 % rem2;
-    quotient = rem1 / rem2;
-    aux0     = -quotient * aux2 + aux1;
-
-    if (rem0 <= 1) {
-    
-      inverse = aux0;
-      break;
-    }
-
-    rem1     = rem2 % rem0;
-    quotient = rem2 / rem0;
-    aux1     = -quotient * aux0 + aux2;
-  }
-
-  return (inverse + p) % p;
-}
-
-/**
  * sieves all primes in the given intervall, and layer (cache optimation)
  * for the given candidates array
  */
 static inline void sieve_from_to(const Sieve *const sieve, 
                                  sieve_t *const candidates,
                                  uint32_t *const multipliers,
+                                 const uint32_t start,
                                  const uint32_t end,
                                  const uint32_t layer) {
+  /* wipe the array */
+  memset(candidates + (start / word_bits), 0, ((end - start) / 8));
+
   uint32_t i;
   for (i = sieve->min_prime_index; 
        sieve->active && i < sieve->max_prime_index; 
@@ -277,6 +303,10 @@ static inline void sieve_from_to(const Sieve *const sieve,
     
     /* current factor */
     uint32_t factor = multipliers[i * sieve->layers + layer];
+
+    /* adjust factor */
+    if (factor < start)
+      factor += (start - factor + prime - 1) / prime * prime;
 
     sieve_t word = bit_word(factor);
     const uint32_t rotate = prime % word_bits;
@@ -292,20 +322,21 @@ static inline void sieve_from_to(const Sieve *const sieve,
   }
 }
 
+
 /**
  * test the found candidates 
  */
 static inline void test_candidates(Sieve *const sieve, 
+                                   sieve_t *const cc1,
+                                   sieve_t *const twn,
                                    const mpz_t mpz_primorial,
                                    const uint32_t extension) {
 
   sieve_t *const all      = sieve->all;
-  sieve_t *const twn      = sieve->twn;
-  sieve_t *const cc1      = sieve->cc1;
   SieveStats *const stats = &sieve->stats;
 
   uint32_t i;
-  for (i = (extension ? sieve->sieve_words / 2 : 0); 
+  for (i = (extension ? (sieve->sieve_words / 2) : 0); 
        sieve->active && i < sieve->sieve_words; 
        i++) {
     
@@ -385,17 +416,22 @@ static inline void test_candidates(Sieve *const sieve,
  */
 void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
 
-  uint32_t *const cc1_muls      = sieve->cc1_muls;
-  uint32_t *const cc2_muls      = sieve->cc2_muls;
-  sieve_t *const twn            = sieve->twn;
-  sieve_t *const cc2            = sieve->cc2;
-  sieve_t *const cc1            = sieve->cc1;
-  sieve_t *const all            = sieve->all;
-  const uint32_t *const primes  = sieve->primes->ptr;
+  uint32_t *const cc1_muls       = sieve->cc1_muls;
+  uint32_t *const cc2_muls       = sieve->cc2_muls;
+  sieve_t *const twn             = sieve->twn;
+  sieve_t *const cc2             = sieve->cc2;
+  sieve_t *const cc1             = sieve->cc1;
+  sieve_t *const all             = sieve->all;
+  sieve_t *const tmp             = sieve->tmp;
+  sieve_t *const ext_twn         = sieve->ext_twn;
+  sieve_t *const ext_cc2         = sieve->ext_cc2;
+  sieve_t *const ext_cc1         = sieve->ext_cc1;
+  const uint32_t *const primes   = sieve->primes->ptr;
+  const uint32_t *const inverses = sieve->two_inverses;
 
   /* generate the multiplicators for the first layer first */
   uint32_t i;
-  for (i = 0;//sieve->min_prime_index; 
+  for (i = sieve->min_prime_index; 
        sieve->active && i < sieve->max_prime_index; 
        i++) {
 
@@ -407,70 +443,153 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
 
     /* nothing in the sieve is divisible by this prime */
     if (modulo == 0) continue;
-    
 
-    /**
-     * al indices of the sieve lets call them 1H, 2H, 3H, ... nH
-     * ar prime origins, so we whant to know when kH +/- 1, is dividible
-     * by prime.
-     * This is so when kH % p == 1 or kH %p == p - 1,
-     *
-     * now we are using the extendet euclid to calulate the invert of
-     * kH % p, so whe have a factor which fitts to the k use above
-     * k = factor + prime * x
-     */
     uint32_t factor = invert(modulo, prime);
+    const uint32_t two_inverse = inverses[i];
 
-    /**
-     * inverse of two to faster calculate the next number in chain to sieve 
-     * TODO expailn better
-     */
-    const uint32_t two_inverse = invert(2, prime);
-
-    const uint32_t index = sieve->layers * i;
+    
+    const uint32_t offset = sieve->layers * i;
     uint32_t l;
 
-    for (l = 0; l < sieve->layers; l++) {
+    if (i < sieve->int64_arithmetic) {
 
-      cc1_muls[index + l] = factor;
-      cc2_muls[index + l] = prime - factor;
+      for (l = 0; l < sieve->layers; l++) {
+     
+        cc1_muls[offset + l] = factor;
+        cc2_muls[offset + l] = prime - factor;
+     
+        /* calc factor for the next number in chain */
+        factor = (factor * two_inverse) % prime;
+      }
+    } else {
 
-      /* calc factor for the next number in chain */
-      factor = (factor * two_inverse) % prime;
+      for (l = 0; l < sieve->layers; l++) {
+     
+        cc1_muls[offset + l] = factor;
+        cc2_muls[offset + l] = prime - factor;
+     
+        /* calc factor for the next number in chain */
+        factor = (uint32_t) (((uint64_t) factor) * 
+                             ((uint64_t) two_inverse)) % ((uint64_t) prime);
+      }
     }
   }
 
   /* calculate the wi-twin cc1 and cc2 layers */
   const uint32_t twn_cc1_layers = (sieve->chain_length + 1) / 2 - 1;
   const uint32_t twn_cc2_layers = sieve->chain_length       / 2 - 1;
-  uint32_t l;
+  uint32_t l, w, e;
 
-  /* do the actual sieveing */
-  for (l = 0; sieve->active && l < sieve->chain_length; l++) {
+  /* sieve the cc2 candidates */
+  for (i = 0; sieve->active && i < sieve->size; i += sieve->cache_bits) {
+    for (l = 0; sieve->active && l < sieve->layers; l++) {
 
-    for (i = sieve->cache_bits; 
-         sieve->active && i <= sieve->size; 
-         i += sieve->cache_bits) {
+      sieve_from_to(sieve, tmp, cc2_muls, i, i + sieve->cache_bits, l);  // TODO organize mulls cace optimized
 
-      sieve_from_to(sieve, cc1, cc1_muls, i, l);
+
+      if (l < sieve->chain_length) {
+
+        for (w = i / word_bits;
+             w < ((i + sieve->cache_bits) / word_bits); 
+             w++) {
+
+          cc2[w] |= tmp[w];
+        }
+      }
+
+      /* copy layers to the twn candidates */
+      if (l == twn_cc2_layers) {
+
+        uint32_t offset = i / word_bits;
+        memcpy(twn + offset, cc2 + offset, sieve->cache_bits / 8);
+      }
+
+
+      /* applay layers to the extensions */
+     if (i >= sieve->size / 2) {
+        for (e = 0; sieve->active && e < sieve->extensions; e++) {
+     
+          if (e < l && l < e + sieve->chain_length) {
+     
+            sieve_t *ptr = ext_cc2 + e * sieve->sieve_words;
+     
+            for (w = i / word_bits; 
+                 w < ((i + sieve->cache_bits) / word_bits); 
+                 w++) {
+
+              ptr[w] |= tmp[w];
+            }
+          }
+     
+          /* copy layers to the extended twn candidates */
+          if (l - (e + 1) == twn_cc2_layers) {
+            uint32_t offset = i / word_bits + e * sieve->sieve_words;
+            memcpy(ext_twn + offset, ext_cc2 + offset, sieve->cache_bits / 8);
+          }
+        }
+      }
     }
+  }
 
-    /* cc2 */
-    for (i = sieve->cache_bits; 
-         sieve->active && i <= sieve->size; 
-         i += sieve->cache_bits) {
+  /* sieve the cc1 candidates */
+  for (i = 0; sieve->active && i < sieve->size; i += sieve->cache_bits) {
+    for (l = 0; sieve->active && l < sieve->layers; l++) {
 
-      sieve_from_to(sieve, cc2, cc2_muls, i, l);
-    }
+      sieve_from_to(sieve, tmp, cc1_muls, i, i + sieve->cache_bits, l);  // TODO organize mulls cace optimized
 
-    /* copy cc2 layers to twn chains */
-    if (twn_cc2_layers == l) 
-      memcpy(twn, cc2, sieve->candidate_bytes);
 
-    /* applay cc1 layers to twn chains */
-    if (twn_cc1_layers == l) {
-      for (i = 0; i < sieve->sieve_words; i++)
-        twn[i] |= cc1[i];
+      if (l < sieve->chain_length) {
+
+        for (w = i / word_bits; 
+             w < ((i + sieve->cache_bits) / word_bits); 
+             w++) {
+
+          cc1[w] |= tmp[w];
+        }
+      }
+
+      /* applay layers to the twn candidates */
+      if (l == twn_cc1_layers) {
+
+        for (w = i / word_bits; 
+             w < ((i + sieve->cache_bits) / word_bits); 
+             w++) {
+
+          twn[w] |= cc1[w];
+        }
+      }
+
+
+      /* applay layers to the extensions */
+      if (i >= sieve->size / 2) {
+        for (e = 0; sieve->active && e < sieve->extensions; e++) {
+     
+          if (e < l && l < e + sieve->chain_length) {
+     
+            sieve_t *ptr = ext_cc1 +  e * sieve->sieve_words;
+     
+            for (w = i / word_bits; 
+                 w < ((i + sieve->cache_bits) / word_bits); 
+                 w++) {
+
+              ptr[w] |= tmp[w];
+            }
+          }
+     
+          /* copy layers to the extended twn candidates */
+          if (l - (e + 1) == twn_cc1_layers) {
+            sieve_t *ptr_cc1 = ext_cc1 + i / word_bits + e * sieve->sieve_words;
+            sieve_t *ptr_twn = ext_twn + i / word_bits + e * sieve->sieve_words;
+     
+            for (w = i / word_bits; 
+                 w < ((i + sieve->cache_bits) / word_bits); 
+                 w++) {
+
+              ptr_twn[w] = ptr_cc1[w];
+            }
+          }
+        }
+      }
     }
   }
 
@@ -479,54 +598,20 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     all[i] = cc1[i] & cc2[i] & twn[i];
 
   /* run the feramt test on the remaining candidates */
-  test_candidates(sieve, mpz_primorial, 0);
-  return 0;
+  test_candidates(sieve, cc1, twn, mpz_primorial, 0);
 
-  uint32_t e;
-  /* do the actual sieveing for the extensions */
-  for (e = 1; sieve->active && e <= sieve->extensions; e++) {
-
-    /* only second half of the arrays are use */
-    memset(cc1 + sieve->sieve_words / 2, 0, sieve->candidate_bytes / 2);
-    memset(cc2 + sieve->sieve_words / 2, 0, sieve->candidate_bytes / 2);
-    memset(twn + sieve->sieve_words / 2, 0, sieve->candidate_bytes / 2);
-
-
-    for (l = e; sieve->active && l < (sieve->chain_length + e); l++) {
- 
-      /* cc1 */
-      for (i = sieve->size / 2 + sieve->cache_bits; 
-           sieve->active && i <= sieve->size; 
-           i += sieve->cache_bits) {
- 
-        sieve_from_to(sieve, cc1, cc1_muls, i, l);
-      }
- 
-      /* cc2 */
-      for (i = sieve->size / 2 + sieve->cache_bits; 
-           sieve->active && i <= sieve->size; 
-           i += sieve->cache_bits) {
- 
-        sieve_from_to(sieve, cc2, cc2_muls, i, l);
-      }
- 
-      /* copy cc2 layers to twn chains */
-      if (twn_cc2_layers == l + e) 
-        memcpy(twn, cc2 + sieve->sieve_words / 2, sieve->candidate_bytes / 2);
- 
-      /* applay cc1 layers to twn chains */
-      if (twn_cc1_layers == l + e) {
-        for (i = sieve->sieve_words / 2; i < sieve->sieve_words; i++)
-          twn[i] |= cc1[i];
-      }
-    }
-
-    /* create the all set of candidates */
-    for (i = 0; i < sieve->sieve_words; i++)
-      all[i] = cc1[i] & cc2[i] & twn[i];
+  /* test extended candidates */
+  for (e = 0; sieve->active && e < sieve->extensions; e++) {
     
-    
+    sieve_t *ptr_cc1 = ext_cc1 + e * sieve->sieve_words;
+    sieve_t *ptr_cc2 = ext_cc2 + e * sieve->sieve_words;
+    sieve_t *ptr_twn = ext_twn + e * sieve->sieve_words;
+
+    /* create the final set of candidates */
+    for (i = sieve->sieve_words / 2; i < sieve->sieve_words; i++) 
+      all[i] = ptr_cc1[i] & ptr_cc2[i] & ptr_twn[i];
+
     /* run the feramt test on the remaining candidates */
-    test_candidates(sieve, mpz_primorial, e);
- }
+    test_candidates(sieve, ptr_cc1, ptr_twn, mpz_primorial, e + 1);
+  }
 }
