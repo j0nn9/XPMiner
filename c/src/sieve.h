@@ -23,6 +23,11 @@
 #define sieve_t uint32_t
 #define word_bits 32
 #define word_max 0xFFFFFFFFu
+/* index / word_bits */
+#define word_index(index) ((index) >> 5)
+/* index % word_bits */
+#define bit_index(index) ((index) & 0x1F)
+#define PRISIEVET PRIu32
 
 #else
 
@@ -32,9 +37,15 @@
 #define sieve_t uint64_t
 #define word_bits 64
 #define word_max 0xFFFFFFFFFFFFFFFFLu
+/* index / word_bits */
+#define word_index(index) ((index) >> 6)
+/* index % word_bits */
+#define bit_index(index) ((index) & 0x3F)
+#define PRISIEVET PRIu64
 
 #endif
 
+#define byte_index(index) ((index) >> 3)
 
 /**
  * stucture to store sieve statistics
@@ -47,6 +58,14 @@ struct SieveStats {
   uint64_t start_time;
 };
 
+
+/**
+ * The Prime Chain types
+ */
+#define FIRST_CUNNINGHAM_CHAIN  "1CC"
+#define SECOND_CUNNINGHAM_CHAIN "2CC"
+#define BI_TWIN_CHAIN           "TWN"
+
 /**
  * the sieve
  */
@@ -55,7 +74,14 @@ struct Sieve {
   sieve_t *cc1; /* bit vektor for the chain candidates of the first kind */
   sieve_t *cc2; /* bit vektor for the chain candidates of the second kind */
   sieve_t *twn; /* bit vektor for the bi-twin chain  candidates */
-  sieve_t *all; /* all set fo candiates */
+  sieve_t *all; /* final set fo candiates */
+  sieve_t *ext_cc1; /* extendet cc1 candidates */
+  sieve_t *ext_cc2; /* extendet cc2 candidates */
+  sieve_t *ext_twn; /* extendet twn candidates */
+  sieve_t *ext_all; /* final set of extendet candidates */
+
+  sieve_t *cc1_layer;
+  sieve_t *cc2_layer;
 
   /** 
    * the cc1 and cc2 multiplicators (for each layer) 
@@ -63,44 +89,6 @@ struct Sieve {
    */
   uint32_t *cc1_muls; 
   uint32_t *cc2_muls; 
-
-  uint32_t chain_length; /* target chain length */
-
-  /* target share length */
-  uint32_t poolshare;
-
-  /* the byte length of the candidate bit vektor */
-  uint32_t candidate_bytes;
-
-  /* the sieve length in sieve words */
-  uint32_t size;
-
-  /* the number of sieve extensions TODO explain */
-  uint32_t extensions;
-
-  /* the number of sieve layers TODO explain */
-  uint32_t layers;
-
-  /* the higes index in the prim table to sieve */
-  uint32_t max_prime_index;
-
-  /**
-   * the lowes index to start sieveing the primes 
-   *
-   * (this can be n_primes_in_primorial + 1
-   *  because nothing in the sieve is divisible by any
-   *  prime used in the primorial)
-   */
-  uint32_t min_prime_index;
-
-  /* the prime table for sieveing */
-  PrimeTable *primes;
-
-  /* the nuber of bytes to load in cache */
-  uint32_t cache_bits;
-
-  /* the array (sieve_t) length for the bit vektors */
-  uint32_t sieve_words;
 
   /* prime test parameters */
   TestParams test_params;
@@ -114,17 +102,8 @@ struct Sieve {
   /* the block header hash as an mpz_t value for integer calculations */
   mpz_t mpz_hash;
 
-  /* the primorial trought which the header hash should be divisible */
-  mpz_t mpz_hash_primorial;            
-
   /* mpz value for testing an prime origin */
   mpz_t mpz_test_origin;
-
-  /**
-   * the additional prim multiplyers usd in primorial 
-   * (hash = primorial / primorial_multiplyers)
-   */
-  mpz_t mpz_primorial_primes;
 
   /**
    * the block header we ar mineing for
@@ -138,11 +117,6 @@ struct Sieve {
   mpz_t mpz_multiplier;
 
   /**
-   * reference to the options
-   */
-  Opts *opts;
-
-  /**
    * indicates wether th sieve soud continue running
    */
   char active;
@@ -151,9 +125,17 @@ struct Sieve {
    * some statistcis 
    */
   SieveStats stats;
-
-
 };
+
+/**
+ * initializes the sieve global variables
+ */
+void init_sieve_globals();
+
+/**
+ * frees sieve globals
+ */
+void free_sieve_globals();
 
 /**
  * sets a new header 
@@ -168,7 +150,7 @@ void reinit_sieve(Sieve *sieve);
 /**
  * initializes a given sieve for the first
  */
-void init_sieve(Sieve *sieve, Opts *const opts);
+void init_sieve(Sieve *sieve);
 
 /**
  * frees all used resauces of the sieve
