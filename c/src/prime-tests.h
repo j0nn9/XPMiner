@@ -13,55 +13,35 @@
 #include "main.h"
 
 /**
- * bit length of the fractional length part of the difficulty
+ * The Prime Chain types
+ */
+#define FIRST_CUNNINGHAM_CHAIN  '1'
+#define SECOND_CUNNINGHAM_CHAIN '2'
+#define BI_TWIN_CHAIN           'T'
+
+
+/**
+ * bit length of the fractional length part of the chain_length
  *
- * (difficulty = difficulty.fractional_length)
+ * (chain_length = chain_length.fractional_length)
  * (  32 bit   =      8 bit  +  24 bit         )
  */
-static const uint32_t N_FRACTIONAL_BITS = 24;
+static const uint32_t FRACTIONAL_BITS = 24;
 
 /**
- * bitmasks for the fractional and chain part of the difficulty
+ * bitmasks for the fractional and chain part of the chain_length
  */
-static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;//(1u << N_FRACTIONAL_BITS) - 1;
-static const uint32_t TARGET_LENGTH_MASK = 0xFF000000; //~TARGET_FRACTIONAL_MASK;
-
-
-#ifdef CALC_FRACTIONAL_LENGTH
+static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;
 
 /**
- * increases a given difficulty by 1
+ * returns the chain_length for the given difficulty
  */
-#define inc_difficulty(difficulty) (difficulty) += 1 << N_FRACTIONAL_BITS
+#define chain_length(difficulty) (difficulty >> FRACTIONAL_BITS)
 
 /**
- * adds a given chain length to the given difficulty    
+ * returns the fractional length for the given chain_length
  */
-#define add_chain_length(difficulty, chain_length) \
-  (difficulty) += chain_length << N_FRACTIONAL_BITS;
-
-/**
- * adds a given fractional part to a given difficulty
- */
-#define add_fractional_length(difficulty, fractional_length)              \
-  (difficulty) = ((difficulty) & TARGET_LENGTH_MASK) | (fractional_length)
-
-/**
- * returns the fractional length for the given difficulty
- */
-#define fractional_length(difficulty) (difficulty & TARGET_FRACTIONAL_MASK)
-
-#else
-
-/**
- * define dummy macros
- */
-#define inc_difficulty(difficulty) (difficulty)++
-#define add_fractional_length(difficulty, fractional_length)           
-#define chain_length(difficulty) (difficulty)
-#define fractional_length(difficulty) 0
-
-#endif
+#define fractional_length(chain_length) (chain_length & TARGET_FRACTIONAL_MASK)
 
 /**
  * helper varibales for primality testing
@@ -82,7 +62,7 @@ struct TestParams {
 /**
  * initialize test params
  */
-static inline void init_test_params(TestParams *params) {
+static inline void init_test_params(TestParams *const params) {
                                     
   mpz_init_set_ui(params->mpz_two, 2L);
   mpz_init(params->mpz_e);
@@ -96,7 +76,7 @@ static inline void init_test_params(TestParams *params) {
 /**
  * clear test params
  */
-static inline void clear_test_params(TestParams *params) {
+static inline void clear_test_params(TestParams *const params) {
 
   mpz_clear(params->mpz_two);
   mpz_clear(params->mpz_e);
@@ -107,40 +87,10 @@ static inline void clear_test_params(TestParams *params) {
   mpz_clear(params->mpz_n);
 }
 
-#ifdef CALC_FRACTIONAL_LENGTH
-/**
- * Calculates the fractional length of a given prime, and its modulo
- * restult form the fermat test
- */
-static inline uint32_t get_fractional_length(mpz_t mpz_p,
-                                             TestParams *params) {
-
-  /* res = p - (2^(p - 1) mod p) */
-  mpz_sub(params->mpz_e, mpz_p, params->mpz_r);
-
-  /* res << N_FRACTIONAL_BITS */
-  mpz_mul_2exp(params->mpz_r, params->mpz_e, N_FRACTIONAL_BITS);
-
-  /* res = res / p */
-  mpz_tdiv_q(params->mpz_e, params->mpz_r, mpz_p);
-
-  uint32_t n_fractional_length = mpz_get_ui(params->mpz_e);
-
-#ifdef DEBUG
-  if (n_fractional_length >= (1u << N_FRACTIONAL_BITS))
-    printf("[EE] FermatProbablePrimalityTest() : fractional assert");
-#endif
-
-  return n_fractional_length;
-}
-#else
-#define get_fractional_length(p, params) 0
-#endif
-
 /**
  * fermat test pseudo prime test
  */
-static inline char fermat_test(mpz_t mpz_p, TestParams *params) {
+static inline char fermat_test(mpz_t mpz_p, TestParams *const params) {
 
   /* tmp = p - 1 */
   mpz_sub_ui(params->mpz_e, mpz_p, 1);
@@ -155,6 +105,60 @@ static inline char fermat_test(mpz_t mpz_p, TestParams *params) {
 }
 
 /**
+ * Calculates the fractional length for the given prime origin, 
+ * and chain length
+ */
+static inline uint32_t get_fractional_length(mpz_t mpz_origin,
+                                             char type,
+                                             char chain_length,
+                                             TestParams *const params) {
+
+
+  if (type == BI_TWIN_CHAIN) {
+
+    /* n = origin * chain_length / 2 */
+    mpz_mul_2exp(params->mpz_n, mpz_origin, chain_length >> 1);
+
+    /* twn chains with even length using the cc1 fractional part */
+    if (chain_length % 2 == 0)
+      mpz_sub_ui(params->mpz_n, params->mpz_n, 1); /* n = n - 1 */
+    else 
+      mpz_add_ui(params->mpz_n, params->mpz_n, 1); /* n = n + 1 */
+
+  } else {
+    
+    /* n = origin * chain_length */
+    mpz_mul_2exp(params->mpz_n, mpz_origin, chain_length);
+
+    if (type == FIRST_CUNNINGHAM_CHAIN)
+      mpz_sub_ui(params->mpz_n, params->mpz_n, 1); /* n = n - 1 */
+    else 
+      mpz_add_ui(params->mpz_n, params->mpz_n, 1); /* n = n + 1 */
+  }
+
+  /* we need fermat reminder */
+  fermat_test(params->mpz_n, params);
+
+  /* res = p - (2^(p - 1) mod p) */
+  mpz_sub(params->mpz_e, params->mpz_n, params->mpz_r);
+
+  /* res << FRACTIONAL_BITS */
+  mpz_mul_2exp(params->mpz_r, params->mpz_e, FRACTIONAL_BITS);
+
+  /* res = res / p */
+  mpz_tdiv_q(params->mpz_e, params->mpz_r, params->mpz_n);
+
+  uint32_t n_fractional_length = mpz_get_ui(params->mpz_e);
+
+#ifdef DEBUG
+  if (n_fractional_length >= (1u << FRACTIONAL_BITS))
+    printf("[EE] FermatProbablePrimalityTest() : fractional assert");
+#endif
+
+  return n_fractional_length;
+}
+
+/**
  * Test probable primality of n = 2p +/- 1 based on Euler, Lagrange and Lifchitz
  *
  * more infos: http://www.primenumbers.net/Henri/us/NouvTh1us.htm
@@ -166,7 +170,7 @@ static inline char fermat_test(mpz_t mpz_p, TestParams *params) {
  */
 static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n, 
                                                 char sophie_germain,
-                                                TestParams *params) {
+                                                TestParams *const params) {
 
   /* tmp = n - 1 */
   mpz_sub_ui(params->mpz_e, mpz_n, 1);
@@ -212,19 +216,6 @@ static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n,
   if (passed_test) 
     return 1;
 
-#ifdef CALC_FRACTIONAL_LENGTH
-  /**
-   * test failed calculate fermat test result for n
-   * (to calculate the fractional length form params->mpz_r)
-   */
-
-  /* tmp = res * res */
-  mpz_mul(params->mpz_e, params->mpz_r, params->mpz_r);
-
-  /* res = tmp / n */
-  mpz_tdiv_r(params->mpz_r, params->mpz_e, mpz_n); 
-#endif
-
   return 0;
 }
 
@@ -239,10 +230,9 @@ static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n,
  */
 static inline uint32_t cunningham_chain_test(mpz_t mpz_p, 
                                              char sophie_germain, 
-                                             char use_fermat_test, 
-                                             TestParams *params) {
+                                             TestParams *const params) {
 
-  uint32_t difficulty = 0;
+  uint32_t chain_length = 0;
 
   /* Fermat test for p first */
   if (!fermat_test(mpz_p, params))
@@ -254,7 +244,7 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
   /* loop untill chain end is reatched */
   for (;;) {
   
-    inc_difficulty(difficulty);
+    chain_length++;
 
     /* n = n * 2 */
     mpz_mul_2exp(params->mpz_n, params->mpz_n, 1);
@@ -264,22 +254,11 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
     else
       mpz_sub_ui(params->mpz_n, params->mpz_n, 1); /* n = n - 1 */
 
-    if (use_fermat_test) {
-
-      if (!fermat_test(params->mpz_n, params)) 
-        break;
-    } else {
-
-      if (!euler_lagrange_lifchitz_test(params->mpz_n, sophie_germain, params)) 
-        break;
-    }
+    if (!euler_lagrange_lifchitz_test(params->mpz_n, sophie_germain, params)) 
+      break;
   }
   
-#ifdef CALC_FRACTIONAL_LENGTH
-  add_fractional_length(difficulty, get_fractional_length(params->mpz_n, params));
-#endif
-
-  return difficulty;
+  return chain_length;
 }
 
 /**
@@ -288,39 +267,30 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
  *
  * Return value: length of the longest found chain
  */
-static inline uint32_t twn_chain_test(mpz_t mpz_origin, TestParams *params) {
+static inline uint32_t twn_chain_test(mpz_t mpz_origin, 
+                                      TestParams *const params) {
 
-  uint32_t difficulty_1cc = 0;
-  uint32_t difficulty_2cc = 0;
+  uint32_t chain_length_1cc = 0;
+  uint32_t chain_length_2cc = 0;
 
   /* mpz_cc1 = mpz_origin - 1 */
   mpz_sub_ui(params->mpz_cc1, mpz_origin, 1);
-  difficulty_1cc = cunningham_chain_test(params->mpz_cc1, 1, 0, params);
+  chain_length_1cc = cunningham_chain_test(params->mpz_cc1, 1, params);
 
-  if (chain_length(difficulty_1cc) >= 2) {
+  if (chain_length(chain_length_1cc) >= 2) {
 
     /* mpz_cc2 = mpz_origin + 1 */
     mpz_add_ui(params->mpz_cc2, mpz_origin, 1);
-    difficulty_2cc = cunningham_chain_test(params->mpz_cc2, 0, 0, params);
+    chain_length_2cc = cunningham_chain_test(params->mpz_cc2, 0, params);
     
     /**
      * Figure out BiTwin Chain length
      * BiTwin Chain allows a single prime at the end for odd length chain
      */
-#ifdef CALC_FRACTIONAL_LENGTH
-    if (chain_length(difficulty_1cc) > chain_length(difficulty_2cc)) {
-      return difficulty_2cc + ((chain_length(difficulty_2cc) + 1) << 
-                               N_FRACTIONAL_BITS);
-    } else {
-      return difficulty_1cc + (chain_length(difficulty_1cc) << 
-                               N_FRACTIONAL_BITS);
-    }
-#else
-    if (difficulty_1cc > difficulty_2cc) 
-      return difficulty_2cc + difficulty_2cc + 1;
+    if (chain_length_1cc > chain_length_2cc) 
+      return chain_length_2cc + chain_length_2cc + 1;
     else 
-      return difficulty_1cc + difficulty_1cc;
-#endif
+      return chain_length_1cc + chain_length_1cc;
   }
 
   return 0;
@@ -331,11 +301,12 @@ static inline uint32_t twn_chain_test(mpz_t mpz_origin, TestParams *params) {
  *
  * Return value: length of the longest found chain
  */
-static inline uint32_t cc1_chain_test(mpz_t mpz_origin, TestParams *params) {
+static inline uint32_t cc1_chain_test(mpz_t mpz_origin, 
+                                      TestParams *const params) {
 
   /* mpz_cc1 = mpz_origin - 1 */
   mpz_sub_ui(params->mpz_cc1, mpz_origin, 1);
-  return cunningham_chain_test(params->mpz_cc1, 1, 0, params);
+  return cunningham_chain_test(params->mpz_cc1, 1, params);
 }
 
 /**
@@ -344,11 +315,12 @@ static inline uint32_t cc1_chain_test(mpz_t mpz_origin, TestParams *params) {
  *
  * Return value: length of the longest found chain
  */
-static inline uint32_t cc2_chain_test(mpz_t mpz_origin, TestParams *params) {
+static inline uint32_t cc2_chain_test(mpz_t mpz_origin, 
+                                      TestParams *const params) {
 
   /* mpz_cc2 = mpz_origin + 1 */
   mpz_add_ui(params->mpz_cc2, mpz_origin, 1);
-  return cunningham_chain_test(params->mpz_cc2, 0, 0, params);
+  return cunningham_chain_test(params->mpz_cc2, 0, params);
 }
 
 #endif

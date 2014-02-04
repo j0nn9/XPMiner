@@ -58,14 +58,6 @@ struct SieveStats {
   uint64_t start_time;
 };
 
-
-/**
- * The Prime Chain types
- */
-#define FIRST_CUNNINGHAM_CHAIN  "1CC"
-#define SECOND_CUNNINGHAM_CHAIN "2CC"
-#define BI_TWIN_CHAIN           "TWN"
-
 /**
  * the sieve
  */

@@ -437,7 +437,8 @@ static inline void test_candidates(Sieve *const sieve,
                                    const mpz_t mpz_primorial,
                                    const uint32_t extension) {
 
-  SieveStats *const stats = &sieve->stats;
+  SieveStats *const stats       = &sieve->stats;
+  TestParams *const test_params = &sieve->test_params;
 
   uint32_t i;
   for (i = ((extension > 0) ? (sieve_words / 2) : 0); 
@@ -467,38 +468,44 @@ static inline void test_candidates(Sieve *const sieve,
                    mpz_primorial, 
                    (word_bits * i + bit) << extension);
 
-        uint32_t difficulty;
-        char     *type;
+        uint32_t chain_length;
+        char     type;
 
         /* bi-twin candidate */
         if ((twn[i] & n) == 0) {
           
-          difficulty = twn_chain_test(sieve->mpz_test_origin,
-                                      &sieve->test_params); 
+          chain_length = twn_chain_test(sieve->mpz_test_origin,
+                                        test_params); 
 
-          stats->twn[chain_length(difficulty)]++;
+          stats->twn[chain_length]++;
           type = BI_TWIN_CHAIN;
 
         /* cc1 candidate */
         } else if ((cc1[i] & n) == 0) {
 
-          difficulty = cc1_chain_test(sieve->mpz_test_origin,
-                                      &sieve->test_params);
+          chain_length = cc1_chain_test(sieve->mpz_test_origin,
+                                        test_params);
 
-          stats->cc1[chain_length(difficulty)]++;
+          stats->cc1[chain_length]++;
           type = FIRST_CUNNINGHAM_CHAIN;
 
         /* cc2 candidate */
         } else {
         
-          difficulty = cc2_chain_test(sieve->mpz_test_origin,
-                                      &sieve->test_params);
+          chain_length = cc2_chain_test(sieve->mpz_test_origin,
+                                        test_params);
 
-          stats->cc2[chain_length(difficulty)]++;
+          stats->cc2[chain_length]++;
           type = SECOND_CUNNINGHAM_CHAIN;
         }
         
-        if (chain_length(difficulty) >= poolshare) {
+        if (chain_length >= poolshare) {
+
+          uint32_t difficulty = chain_length << FRACTIONAL_BITS;
+          difficulty += get_fractional_length(sieve->mpz_test_origin,
+                                              type,
+                                              chain_length,
+                                              &sieve->test_params);
           
           mpz_mul_ui(sieve->mpz_multiplier, 
                      mpz_fixed_hash_multiplier, 
