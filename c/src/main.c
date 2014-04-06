@@ -1,6 +1,6 @@
 /**
  * Implementation of an Primecoin (XPM) Miner
- * (main this is weher it begins)
+ * (main this is where it begins)
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,14 +14,14 @@
 
 #define EXTERN
 #include "main.h"
+#undef EXTERN
 
 /**
- * thread to output statsus informations
+ * thread to output status informations
  */
 void *stats_thread(void *thread_args) {
   
   MinerArgs *stats   = (MinerArgs *) thread_args;
-  Opts *opts         = stats[0].opts;
   uint64_t n_threads = stats[0].n_threads;
 
   /* wait untill mining started */
@@ -33,7 +33,7 @@ void *stats_thread(void *thread_args) {
   /* loop until shutdown */
   while (running) {
 
-    sleep(opts->stats_interval);
+    sleep(opts.stats_interval);
     print_stats(stats, n_threads);
   }
 
@@ -45,16 +45,17 @@ void *stats_thread(void *thread_args) {
  */
 void *primcoin_miner(void *thread_args) {
 
-  MinerArgs *args = (MinerArgs *) thread_args;
-  Sieve *const sieve = &args->sieve;
-  Opts *const opts = args->opts;
+  MinerArgs *args          = (MinerArgs *) thread_args;
+  Sieve *const sieve       = &args->sieve;
+  const uint32_t id        = args->id;
+  const uint32_t n_threads = args->n_threads;
 
   /* the primorial to create the sieve form */
   mpz_t mpz_primorial;
   mpz_init(mpz_primorial);
 
-  /* initilaize sieve */
-  init_sieve(sieve, opts);
+  /* initialize the sieve */
+  init_sieve(sieve);
 
   /* waiting to get started */
   while (running && args->mine == MINING_WAIT)
@@ -70,26 +71,32 @@ void *primcoin_miner(void *thread_args) {
 
       pthread_mutex_lock(&args->mutex); 
 
+      if (opts.verbose)
+        info_msg("[Thread-%" PRIu32 "] got new work\n", args->id);
+
       args->new_work = 0;
 
       /* reinit sieve */
-      sieve_set_header(sieve, opts->header);
-
-      sieve->header.nonce = args->id;
+      sieve_set_header(sieve, opts.header);
 
       pthread_mutex_unlock(&args->mutex);
-    } 
 
-    /* reinit sieve */
+      /* init time (server - client offset)*/
+      header_set_time(&sieve->header, n_threads, id);
+
+      /* set nonce to zero */
+      sieve->header.nonce = 0;
+    }
+
     reinit_sieve(sieve);
 
     /* generate a hash divisible by the hash primorial */
     mine_header_hash(sieve, args->n_threads);
 
-    /* calculate the primorial */
-    mpz_mul(mpz_primorial, sieve->mpz_hash, sieve->mpz_primorial_primes);
+    /* calculate the primorial for sieveing */
+    mpz_mul(mpz_primorial, sieve->mpz_hash, opts.mpz_fixed_hash_multiplier);
 
-    /* run the sieve and chech the candidates */
+    /* run the sieve and check the candidates */
     sieve_run(sieve, mpz_primorial);
   }
 
@@ -103,48 +110,55 @@ void *primcoin_miner(void *thread_args) {
 
 /**
  * main thread which starts the miner threads
- * and outputs stats
+ * and the output (stats) thread
  */
-void main_thread(Opts * opts) {
+void main_thread(MinerArgs *args) {
  
-  pthread_t *threads = malloc(opts->genproclimit * sizeof(pthread_t));
-  MinerArgs *args    = malloc(opts->genproclimit * sizeof(MinerArgs));
+  pthread_t stats;
+  pthread_t *threads = malloc(opts.num_threads * sizeof(pthread_t));
 
-  memset(args, 0, opts->genproclimit * sizeof(MinerArgs));
+  char args_given = (args != NULL);
+
+  if (args == NULL)
+    args = (MinerArgs *) malloc(opts.num_threads * sizeof(MinerArgs));
+
+  memset(args, 0, opts.num_threads * sizeof(MinerArgs));
 
   int i;
 
-  for (i = 0; i < opts->genproclimit; i++) {
+  /* init thread specific part of the args */
+  for (i = 0; i < opts.num_threads; i++) {
     args[i].mine      = MINING_WAIT;
-    args[i].opts      = opts;
-    args[i].n_threads = opts->genproclimit;
+    args[i].n_threads = opts.num_threads;
     args[i].id        = i;
+    args[i].new_work  = 1;
 
     pthread_mutex_init(&args[i].mutex, NULL);
     pthread_create(&threads[i], NULL, primcoin_miner, (void *) &args[i]);
   }
 
-  pthread_t stats;
-  pthread_create(&stats, NULL, stats_thread, (void *) args);
+  if (!opts.quiet) 
+    pthread_create(&stats, NULL, stats_thread, (void *) args);
 
   /* connect to pool */
-  connect_to(opts);
+  connect_to_pool();
 
-  /* loop untille programm gets closen */
+  /* loop until programm gets closed */
   while (running) {
     
-    switch (recv_work(opts)) {
+    /* wait for work from pool */
+    switch (recv_work(args)) {
       
       case WORK_MSG: 
-        for (i = 0; i < opts->genproclimit; i++) {
-          
-          if (args[i].mine == MINING_WAIT)
-            args[i].mine = MINING_START;
+        for (i = 0; i < opts.num_threads; i++) {
 
           pthread_mutex_lock(&args[i].mutex);
 
           args[i].new_work = 1;
           args[i].sieve.active = 0;
+          
+          if (args[i].mine == MINING_WAIT)
+            args[i].mine = MINING_START;
 
           pthread_mutex_unlock(&args[i].mutex);
         }
@@ -157,26 +171,29 @@ void main_thread(Opts * opts) {
       /* reconnect on failur */
       default:
         if (running)
-          connect_to(opts);
+          connect_to_pool();
 
     }
   }
 
   /* shutdown stats thread */
-  pthread_join(stats, NULL);
+  if (!opts.quiet) 
+    pthread_join(stats, NULL);
 
   /* shutdown miner threads */
-  for (i = 0; i < opts->genproclimit; i++) {
+  for (i = 0; i < opts.num_threads; i++) {
     args[i].new_work = 0;
     args[i].sieve.active = 0;
   }
 
-  /* fait for threads to finish */
-  for (i = 0; i < opts->genproclimit; i++) 
+  /* wait for threads to finish */
+  for (i = 0; i < opts.num_threads; i++) 
     pthread_join(threads[i], NULL);
   
   free(threads);
-  free(args);
+
+  if (!args_given)
+    free(args);
 }
 
 /**
@@ -191,23 +208,27 @@ void soft_shutdown(int signum) {
   running = 0;
 
   if (shutdown >= 5) {
-    info_msg("\rOK im going to KILL myself!!!\n");
+    if (!opts.quiet)
+      info_msg("\rOK im going to KILL myself!!!\n");
+
     kill(0, SIGKILL);
   }
 
-  info_msg("\rshuting down...\n");
+  if (!opts.quiet)
+    info_msg("\rshuting down...\n");
+
   shutdown++;
 }
 
 /**
- * Start reading here
+ * start everything (main program start)
  */
 int main(int argc, char *argv[]) {
 
-   /**
-    * indecates that the programm shoud runn
-    */
-   running = 1;
+  /**
+   * indecates that the programm shoud run
+   */
+  running = 1;
 
   /* set signal handler for soft shutdown */
   struct sigaction action;
@@ -216,53 +237,23 @@ int main(int argc, char *argv[]) {
   action.sa_handler = soft_shutdown;
   sigaction(SIGINT,  &action, NULL);
   sigaction(SIGTERM, &action, NULL);
+  sigaction(SIGALRM, &action, NULL);
 
   /* continue mining if terminal lost connection */
   signal(SIGHUP,  SIG_IGN);
-  signal(SIGPIPE, SIG_IGN); // send if keepalive probe failed
+  signal(SIGPIPE, SIG_IGN); 
   signal(SIGQUIT, SIG_IGN);
 
-  /* read the comadline options, and initialize program wide parameters */
-  Opts *opts = init_opts(argc, argv);
+  /* read the commandline options, and initialize program wide parameters */
+  init_opts(argc, argv);
 
-  /* test */
-  printf("Options:\n"
-         "  poolfee:            %d\n"
-         "  poolip:             %s\n"
-         "  poolport:           %d\n"
-         "  pooluser:           %s\n"
-         "  poolpassword:       %s\n"
-         "  genproclimit:       %d\n"
-         "  minerid:            %d\n"
-         "  n_sieve_extensions: %d\n"
-         "  n_sieve_percentage: %d\n"
-         "  sievesize:          %d\n"
-         "  n_primes_in_hash:   %d\n"
-         "  cachebits:          %d\n"
-         "  verbose:            %d\n"
-         "  stats_interval:     %d\n"
-         "  poolshare:          %d\n",
-         opts->poolfee,
-         opts->poolip,
-         opts->poolport,
-         opts->pooluser,
-         opts->poolpassword,
-         opts->genproclimit,
-         opts->minerid,
-         opts->n_sieve_extensions,
-         opts->n_sieve_percentage,
-         opts->sievesize,
-         opts->n_primes_in_hash,
-         opts->cachebits,
-         opts->verbose,
-         opts->stats_interval,
-         opts->poolshare);
+  /* print options if --verbose was given */
+  print_options();
 
   /* start mining */
-  main_thread(opts);
+  main_thread(NULL);
 
-  free_opts(opts);
-  free(opts);
+  free_opts();
 
   return 0;
 }
