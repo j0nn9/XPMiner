@@ -16,7 +16,7 @@
 /**
  * (re)connect to the given (pool)ip and (pool)port
  */
-void connect_to(Opts *opts);
+void connect_to_pool();
 
 /**
  * receive work from server
@@ -24,14 +24,13 @@ void connect_to(Opts *opts);
  *  the message type or
  *  -1 on failure 
  */
-int recv_work(Opts *opts);
+int recv_work(MinerArgs *args);
 
 /**
  * sends a valid share (block header) to the server
  */
-void submit_share(Opts *opts, 
-                  BlockHeader *share, 
-                  char *type, 
+void submit_share(BlockHeader *share, 
+                  char type, 
                   uint32_t difficulty);
 
 #endif /* __NET_H__ */
