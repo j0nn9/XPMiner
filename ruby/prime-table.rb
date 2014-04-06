@@ -19,8 +19,13 @@ class PrimeTable
     for i in (2..Math.sqrt(sieve_size)) do 
 
       if sieve[i] == true
-        for p in ((i * i)..sieve_size) do
+        
+        # p = i^2
+        p = i**2
+
+        while p < sieve_size do
           sieve[p] = false
+          p += i
         end
       end
     end
