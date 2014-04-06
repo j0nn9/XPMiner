@@ -1,6 +1,5 @@
 /**
- * TODO chech test test, something seams to be worng, as son as a 3-chain is found no more 2 chains ar found, also no 1 chains are found, that is wered
- * TODO einster und zweite chains bleiben irgendwann stehen und ändern sich nicht mehr wieso???
+ * header file of the inlinable prime tests
  */
 #ifndef __PRIMECOIN_H__
 #define __PRIMECOIN_H__
@@ -24,7 +23,7 @@
  * bit length of the fractional length part of the chain_length
  *
  * (chain_length = chain_length.fractional_length)
- * (  32 bit   =      8 bit  +  24 bit         )
+ * (  32 bit     =      8 bit  +  24 bit         )
  */
 static const uint32_t FRACTIONAL_BITS = 24;
 
@@ -41,7 +40,8 @@ static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;
 /**
  * returns the fractional length for the given chain_length
  */
-#define fractional_length(chain_length) (chain_length & TARGET_FRACTIONAL_MASK)
+#define fractional_length(chain_length) \
+  (chain_length & TARGET_FRACTIONAL_MASK)
 
 /**
  * helper varibales for primality testing
@@ -74,8 +74,8 @@ static inline void init_test_params(TestParams *const params) {
 }
 
 /**
- * clear test params
- */
+* clear test params
+*/
 static inline void clear_test_params(TestParams *const params) {
 
   mpz_clear(params->mpz_two);
@@ -88,7 +88,7 @@ static inline void clear_test_params(TestParams *const params) {
 }
 
 /**
- * fermat test pseudo prime test
+ * fermat pseudo prime test
  */
 static inline char fermat_test(mpz_t mpz_p, TestParams *const params) {
 
@@ -159,7 +159,8 @@ static inline uint32_t get_fractional_length(mpz_t mpz_origin,
 }
 
 /**
- * Test probable primality of n = 2p +/- 1 based on Euler, Lagrange and Lifchitz
+ * Test probable primality of n = 2p +/- 1 based on Euler, 
+ * Lagrange and Lifchitz
  *
  * more infos: http://www.primenumbers.net/Henri/us/NouvTh1us.htm
  *
@@ -208,15 +209,13 @@ static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n,
       /* mpz_r == 1 */
       passed_test = !mpz_cmp_ui(params->mpz_r, 1);
   } else
-      printf("[EE] %s : invalid n %% 8 = %d, %s",
-             __func__,
-             n_mod8, 
-             (sophie_germain? "first kind" : "second kind"));
+      error_msg("[EE] %s : invalid n %% 8 = %d, %s",
+                __func__,
+                n_mod8, 
+                (sophie_germain? "first kind" : "second kind"));
   
-  if (passed_test) 
-    return 1;
 
-  return 0;
+  return passed_test;
 }
 
 /**
@@ -234,9 +233,14 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
 
   uint32_t chain_length = 0;
 
+#ifndef USE_GMP_MILLER_RABIN_TEST
   /* Fermat test for p first */
   if (!fermat_test(mpz_p, params))
-      return 0;
+    return 0;
+#else
+  if (!mpz_probab_prime_p(mpz_p, 1))
+    return 0;
+#endif
 
   /* Euler-Lagrange-Lifchitz test for the following numbers in chain */
   mpz_set(params->mpz_n, mpz_p);
@@ -254,8 +258,13 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
     else
       mpz_sub_ui(params->mpz_n, params->mpz_n, 1); /* n = n - 1 */
 
+#ifndef USE_GMP_MILLER_RABIN_TEST
     if (!euler_lagrange_lifchitz_test(params->mpz_n, sophie_germain, params)) 
       break;
+#else
+    if (!mpz_probab_prime_p(params->mpz_n, 1))
+      break;
+#endif
   }
   
   return chain_length;
@@ -277,7 +286,7 @@ static inline uint32_t twn_chain_test(mpz_t mpz_origin,
   mpz_sub_ui(params->mpz_cc1, mpz_origin, 1);
   chain_length_1cc = cunningham_chain_test(params->mpz_cc1, 1, params);
 
-  if (chain_length(chain_length_1cc) >= 2) {
+  if (chain_length_1cc >= 2) {
 
     /* mpz_cc2 = mpz_origin + 1 */
     mpz_add_ui(params->mpz_cc2, mpz_origin, 1);
