@@ -58,10 +58,9 @@ module XPMiner
     end
 
     ##
-    # return @difficulty + n
+    # return this + n
     #
     def +(n)
-
       if n.is_a? Fixnum
         return Difficulty.new(@difficulty + (TARGET_FRACTIONAL_MASK + 1) * n)
       elsif n.is_a? Difficulty
@@ -239,9 +238,9 @@ module XPMiner
           # BiTwin Chain allows a single prime at the end for odd length chain
           #
           if difficulty_1cc.chain_length > difficulty_2cc.chain_length
-            difficulty = difficulty_2cc + (difficulty_1cc.chain_length + 1)
+            difficulty = difficulty_2cc + (difficulty_2cc.chain_length + 1)
           else
-            difficulty = difficulty_1cc + difficulty_2cc.chain_length
+            difficulty = difficulty_1cc + difficulty_1cc.chain_length
           end
         end
       end
