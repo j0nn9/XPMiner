@@ -1,5 +1,5 @@
 /**
- * to store program wider parameters and
+ * to store program wide parameters and
  * parse comandline options
  */
 #ifndef __OPTIONS_H__
@@ -7,13 +7,14 @@
 
 #include <inttypes.h>
 #include <gmp.h>
+#include <time.h>
 
 #include "main.h"
 
 /**
  * stucture for storing overall miner statistics
  */
-struct  MiningStats {
+struct MiningStats {
   uint64_t share;
   uint64_t rejected;
   uint64_t stale;
@@ -21,82 +22,124 @@ struct  MiningStats {
 };
 
 /**
- * Structure for the options
+ * Struct for storing the program wide options
  */
 struct Opts {
-   
-  /* comand line options */
-  int  poolfee;
-  char *poolip;
-  int  poolport;
-  char *pooluser;
-  char *poolpassword;
-  int  genproclimit;
-  int  minerid;
-  int  n_sieve_extensions;
-  int  n_sieve_percentage;
-  int  sievesize;
-  /* number of primes the block header hash should be divisible by */
-  int  n_primes_in_hash;       
+  
+  /* the fee for the pool (1-100) */
+  uint8_t pool_fee;
 
-  /* num of bytes to preocess in cache (while sieveing) */
-  int cachebits;
+  /* pool ipv4 address */
+  char *pool_ip;
+
+  /* pool tcp port */
+  uint16_t pool_port;
+
+  /* username */
+  char *pool_user;
+  
+  /* password */
+  char *pool_pwd;
+
+  /* number of miner threads */
+  uint8_t num_threads;
+
+  /* miner id */
+  uint16_t miner_id;
+
+  /* number of sieve extensions */
+  uint32_t sieve_extensions;
+
+  /* number of primes to sieve */
+  uint32_t sieve_primes;
+
+  /* sieve size in bits */
+  uint32_t sieve_size;
+
+  /**
+   * number of (the first n) primes the 
+   * block header hash should be divisible by 
+   */
+  uint32_t primes_in_hash;       
+
+  /**
+   * number of primes the primorial (which is used for sieveing)
+   * should be divisible by 
+   * primorial := hash * pn * pn+1 * ... * pn+k
+   *
+   * where pn is the first prime the has is not divisible by
+   * so    n   = primes_in_hash + 1
+   * and   n+k = primes_in_primorial
+   */
+  uint32_t primes_in_primorial; 
+
+  /* num of bits to precess in cache (while sieveing) */
+  uint32_t cache_bits;
 
   /* print extended stats */
   char verbose;
 
+  /*
+   * indecates that the first half of extension 0 
+   * should be used during sieveing
+   * (see sieve.h for an detailed explanation)
+   */
+  char use_first_half;
+
+  /* no output */
+  char quiet;
+
   /* output stats every n seconds */
   uint32_t stats_interval;
 
-  /* min chainlength to submit to the pool */
-  int poolshare;
+  /* min chain length to submit to the pool */
+  uint32_t pool_share;
   
-  /**
-   * number of primes the primorial should be divisible by 
-   * primorial := hash * pn * pn+1 * ... * pn+k
-   *
-   * where pn is the first prime the has is not divisible by
-   * so    n   = n_primes_in_hash + 1
-   * and   n+k = n_primes_in_primorial
-   */
-  int  n_primes_in_primorial; 
-
   /**
    * the target chain length to mine
    */
-  int chain_length;
+  uint32_t chain_length;
 
   /**
-   * the highes index in the primtable to sieve
+   * the highes index in the prime table to sieve
    */
-  int max_prime_index;
- 
-  /* program wide parameters */
+  uint32_t max_prime_index;
  
   /* the primorial trought which the header hash should be divisible */
-  mpz_t mpz_hash_primorial;            
+  uint32_t hash_primorial;            
 
   /* the prime table with the first n primes */
   PrimeTable *primes;
 
   /**
+   * array of the inverses of two for the prime table primes 
+   */
+  uint32_t *two_inverses;
+
+  /**
+   * estimated sieve percentage for connection withe the pool
+   */
+  uint32_t sieve_percentage;
+
+  /**
    * the mpz primorial
-   * the sieve indexes ar factors of this
-   * let H := primorial, and n := sievesize
+   * the sieve indexes are factors of this
+   * let H := primorial, and n := sieve_size
    * then the sieve consists out of:
-   * 1. layer 1H, 2H, 3H, 4H, 5H, 6H, ... ,nH
-   * 2. layer 1H, 3H, 5H, 7H, 9H, 11H, ..., 2nH
-   * 3. layer 1H, 5H, 9H, 13H, 17H, 21H ..., 4nH
+   * 0. layer 0H, 1H, 2H,  3H,  4H,  5H, ...,  nH
+   * 1. layer 0H, 2H, 4H,  6H,  8H, 10H, ..., 2nH
+   * 2. layer 0H, 4H, 8H, 12H, 16H, 20H  ..., 4nH
    *  
-   *  and so on, layer i has steps of 2^i till 2^i * n * H
+   * and so on, layer i has steps of 2^i till 2^i * n * H
+   * (look in sieve.h for a better explanation)
    */
   mpz_t mpz_primorial;
 
   /**
-   * the additional prim multiplyers usd in primorial 
-   * (hash = primorial / primorial_multiplyers)
+   * the additional prime multipliers used in the mpz_primorial 
+   * (hash = mpz_primorial / mpz_fixed_hash_multiplier)
    */
-  mpz_t mpz_primorial_primes;
+  mpz_t mpz_fixed_hash_multiplier;
 
   /**
    * the block header we are mining for
@@ -113,16 +156,30 @@ struct Opts {
    */
   uint32_t sieve_words;
 
+  /**
+   * prime index after that we have to use 64 bit arithmetic
+   */
+  uint32_t int64_arithmetic;
+
+  /**
+   * time offset to the pool server
+   */
+  time_t time_offset;
+
+  /**
+   * time since program start
+   */
+  time_t start_time;
 };
 
 /**
  * read the comand line options into a Opts struct
  */
-Opts *init_opts(int argc, char *argv[]);
+void init_opts(int argc, char *argv[]);
 
 /**
  * free promgram wide parameters on shutdown
  */
-void free_opts(Opts *opts);
+void free_opts();
 
 #endif /* __OPTIONS_H__ */
