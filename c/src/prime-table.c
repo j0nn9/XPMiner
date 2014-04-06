@@ -13,17 +13,17 @@
 /**
  * Sets the given bit-possition in an byte array
  */
-#define set_bit(ary, i) (ary[(i) / 8] |= (1 << ((i) % 8)))
+#define set_bit(ary, i) (ary[(i) >> 3] |= (1 << ((i) & 0x7)))
     
 /**
  * Unsets the given bit-possition in an byte array
  */
-#define unset_bit(ary, i) (ary[(i) / 8] &= ~(1 << ((i) % 8)))
+#define unset_bit(ary, i) (ary[(i) >> 3] &= ~(1 << ((i) & 0x7)))
 
 /**
  * returns wether the given bit-possition is an byte array is setted or not
  */
-#define bit_at(ary, i) (ary[(i) / 8] & (1 << ((i) % 8)))
+#define bit_at(ary, i) (ary[(i) >> 3] & (1 << ((i) & 0x7)))
 
 /**
  * returns wether the given index is a prime or not
@@ -47,17 +47,15 @@ static uint64_t count_sieve(uint8_t *ary, uint32_t sieve_size) {
    * run the sieve in seps of size 6 
    * (each prime > 3 will be on one of the folloing palces: 6n +/- 1)
    */
-  for (i = 6; i < sieve_size; i += 6 ) {
+  for (i = 5; i < sieve_size; i += 4 ) {
 
-    i--; /* check 6n - 1*/
+    /* check 6n - 1*/
     if (is_prime(ary, i))
       n++;
 
     i += 2; /* check 6n + 1 */
     if (is_prime(ary, i))
       n++;
-    
-    i--; /* reset to 6n */
   }
 
   return n;
@@ -68,13 +66,13 @@ static uint64_t count_sieve(uint8_t *ary, uint32_t sieve_size) {
  */
 static PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
   
-  PrimeTable *table = malloc(sizeof(PrimeTable));
+  PrimeTable *table = (PrimeTable *) malloc(sizeof(PrimeTable));
 
   if (table == NULL)
-    perror("failed to alloc space for the prime table");
+    errno_msg("failed to alloc space for the prime table");
 
   table->len = count_sieve(ary, sieve_size);
-  table->ptr = malloc(sizeof(uint32_t) * table->len);
+  table->ptr = (uint32_t *) malloc(sizeof(uint32_t) * table->len);
 
   /* 2 and 3 are not counted in the loop */
   uint64_t i, n = 2;
@@ -110,12 +108,12 @@ static PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 PrimeTable *gen_prime_table(uint32_t sieve_size) {
 
   /* bit array for sieveing */
-  uint8_t *ary = calloc(sizeof(uint8_t), sieve_size / 8);
+  uint8_t *ary = (uint8_t *) calloc(sizeof(uint8_t), sieve_size / 8);
 
   if (ary == NULL) 
-    perror("failed to allocate space for prime table generation");
+    errno_msg("failed to allocate space for prime table generation");
   
-  uint32_t i, p, limit = (uint32_t) sqrt((double) sieve_size);
+  uint32_t i, p, limit = (uint32_t) (sqrt((double) sieve_size) + 1);
 
   /* 0 and 1 ar not primes */
   set_bit(ary, 0);
@@ -155,7 +153,22 @@ void primorial(PrimeTable *primes,
                uint32_t start, 
                uint32_t end) {
 
+  mpz_set_ui(mpz_primorial, 1);
+
   uint32_t i;
   for (i = start; i < end; i++)
     mpz_mul_ui(mpz_primorial, mpz_primorial, primes->ptr[i]);
+}
+
+/**
+ * creat an so called primorial 
+ * (a composite number out of a given range of primes)
+ */
+void int_primorial(PrimeTable *primes, uint32_t *primorial, uint32_t end) {
+
+  *primorial = 1;
+
+  uint32_t i;
+  for (i = 0; i < end; i++)
+    *primorial *= primes->ptr[i];
 }

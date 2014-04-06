@@ -32,4 +32,10 @@ void primorial(PrimeTable *primes,
                uint32_t start, 
                uint32_t end);
 
+/**
+ * creat an so called primorial 
+ * (a composite number out of a given range of primes)
+ */
+void int_primorial(PrimeTable *primes, uint32_t *primorial, uint32_t end);
+
 #endif /* __PRIME_TABLE_H__ */
