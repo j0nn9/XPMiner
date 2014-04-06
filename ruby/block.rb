@@ -32,22 +32,29 @@ class BlockHeader
   attr_accessor :nonce, :primemultiplier
 
   ##
+  # returns the binary string repersentation of this
+  #
+  def to_s
+    str  = [ @version ].pack("L") 
+    str += sha256_to_str(@hash_prev_block)
+    str += sha256_to_str(@hash_merkle_root)
+    str += [ @time, @min_difficulty, @nonce ].pack("LLL")
+  end
+
+  ##
   # calculates and returns the header hash
   #
   # (int converts the values to its binary representation befor hashing)
   #
   def hash
     tmp = Digest::SHA256.new
-    tmp.update [ @version ].pack("L")
-    tmp.update sha256_to_str(@hash_prev_block)
-    tmp.update sha256_to_str(@hash_merkle_root)
-    tmp.update [ @time, @min_difficulty, @nonce ].pack("LLL")
+    tmp.update self.to_s
     
     # hash the result again
     sha256 = Digest::SHA256.new
     sha256.update(tmp.digest)
-    return sha256.hexdigest
-    #return sha256.hexdigest TODO
+
+    return sha256.digest
   end
 
   private
@@ -71,6 +78,7 @@ end
 # testing
 #
 
+# TODO include in inintialize (reading from string)
 def bytestr_to_i str
   int = 0;
 
@@ -115,6 +123,9 @@ if __FILE__ == $0
   puts "  min_difficulty #{ header.min_difficulty }"
   puts "  nonce #{ header.nonce }"
 
-  puts "\nheader hash: " + header.hash
+  print "\nheader hash: "
+
+  header.hash.each_byte { |e| printf "%02x", e }
+  print "\n"
 
 end
