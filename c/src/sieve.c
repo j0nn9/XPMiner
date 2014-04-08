@@ -178,6 +178,10 @@ void init_sieve_globals() {
   /* calculate the bi-twin cc1 and cc2 layers */
   twn_cc1_layers = (chain_length + 1) / 2 - 1;
   twn_cc2_layers = chain_length       / 2 - 1;
+
+
+  /* check the primes if DEBUG is enabeld */
+  check_primes(primes, two_inverses, max_prime_index);
 }
 
 /**
@@ -316,13 +320,8 @@ void reinit_sieve(Sieve *sieve) {
   memset(sieve->cc2_layer, 0, candidate_bytes);
 
   /* for cc1 and cc2 chains, for each layer */
-  memset(sieve->cc1_muls, 0xFF, sizeof(uint32_t *) * 
-                                layers * 
-                                max_prime_index);
-
-  memset(sieve->cc2_muls, 0xFF, sizeof(uint32_t *) * 
-                                layers * 
-                                max_prime_index);
+  memset(sieve->cc1_muls, 0xFF, sizeof(uint32_t) * layers * max_prime_index);
+  memset(sieve->cc2_muls, 0xFF, sizeof(uint32_t) * layers * max_prime_index);
 
 }
 
@@ -354,13 +353,8 @@ void init_sieve(Sieve *sieve) {
   sieve->ext_all = (sieve_t *) malloc(candidate_bytes * extensions);
 
   /* multiplicators (inverse) for cc1 and cc2 chains, for each layer */
-  sieve->cc1_muls = (uint32_t *) malloc(sizeof(uint32_t *) * 
-                                       layers * 
-                                       max_prime_index);
-
-  sieve->cc2_muls = (uint32_t *) malloc(sizeof(uint32_t *) * 
-                                        layers * 
-                                        max_prime_index);
+  sieve->cc1_muls = malloc(sizeof(uint32_t) * layers * max_prime_index);
+  sieve->cc2_muls = malloc(sizeof(uint32_t) * layers * max_prime_index);
 
   init_test_params(&sieve->test_params);
 
@@ -418,36 +412,14 @@ static void sieve_from_to(sieve_t  *const   candidates,
     uint32_t factor = multipliers[i * layers + layer];
 
     /* adjust factor for the given range */
-#ifdef USE_SMART_FACTOR_ADDJUST
-    if (factor < start)
-      factor = prime - ((start - factor) % prime);
-#else
     if (factor < start)
       factor += (start - factor + prime - 1) / prime * prime;
-#endif
-
-/* xolominer */
-#ifdef USE_ROTATE 
-    sieve_t word = bit_word(factor);
-    const uint32_t rotate = bit_index(prime);
-
-    /* progress the given range of the sieve */
-    for (; factor < end; factor += prime) {
-
-      word_at(candidates, factor) |= word;
-      word = (word << rotate) | (word >> (word_bits - rotate));
-    }
-
-/* faster bit aritmetic */
-#else
 
     /* progress the given range of the sieve */
     for (; factor < end; factor += prime) {
 
       word_at(candidates, factor) |= bit_word(factor);
     }
-
-#endif
 
     /* save the factor for the next round */
     multipliers[i * layers + layer] = factor;
@@ -580,8 +552,8 @@ static inline void calc_multipliers(Sieve *const sieve,
   uint64_t start_time = gettime_usec();
 #endif
 
-  uint32_t *const cc1_muls       = sieve->cc1_muls;
-  uint32_t *const cc2_muls       = sieve->cc2_muls;
+  uint32_t *const cc1_muls = sieve->cc1_muls;
+  uint32_t *const cc2_muls = sieve->cc2_muls;
 
   /* generate the multiplicators for the first layer first */
   uint32_t i;
@@ -623,8 +595,8 @@ static inline void calc_multipliers(Sieve *const sieve,
         cc2_muls[offset + l] = prime - factor;
      
         /* calc factor for the next number in chain */
-        factor = (uint32_t) (((uint64_t) factor) * 
-                             ((uint64_t) two_inverse)) % ((uint64_t) prime);
+        factor = (uint32_t) ((((uint64_t) factor) * 
+                             ((uint64_t) two_inverse)) % ((uint64_t) prime));
       }
     }
   }
@@ -656,9 +628,6 @@ static inline void calc_multipliers(Sieve *const sieve,
  * where H is the primorial
  */
 void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
-  
-  /* check the primes if DEBUG is enabeld */
-  check_primes(primes, max_prime_index);
 
 #ifdef PRINT_TIME
   uint64_t start_time = gettime_usec();
@@ -797,11 +766,6 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     }
   }
 
-#ifdef CHECK_SIEVE
-  /* reclaculate the multiliers for DEBUG sieveing */
-  calc_multipliers(sieve, mpz_primorial);
-#endif 
-
   /* check the sieve if DEBUG is enabled */
   check_sieve(cc1,                     
               cc2,                     
@@ -817,7 +781,10 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
               layers,
               primes,                  
               min_prime_index,               
-              max_prime_index);
+              max_prime_index,
+              mpz_primorial,
+              sieve_size,
+              use_first_half);
 
   /* create the final set of candidates */
   uint32_t i;
@@ -850,7 +817,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
 #endif
 
   /* check sieve out put if DEBUG is enabeld */
-  chech_candidates(mpz_primorial,     
+  check_candidates(mpz_primorial,     
                    all,               
                    cc1,               
                    twn,               
@@ -861,7 +828,6 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
 
   /* run the fermat test on the remaining candidates */
   test_candidates(sieve, cc1, twn, all, mpz_primorial, 0); 
-  // TODO use gmp_propable_prime for testing the frmat test 
 
   /* test extended candidates */
   for (e = 0; sieve->active && e < extensions; e++) {
@@ -871,7 +837,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     sieve_t *ptr_all = ext_all + e * sieve_words;
 
     /* check sieve out put if DEBUG is enabeld */
-    chech_candidates(mpz_primorial,     // TODO stimmt so nicht mehr
+    check_candidates(mpz_primorial, 
                      ptr_all,               
                      ptr_cc1,               
                      ptr_twn,               
