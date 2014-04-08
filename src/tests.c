@@ -494,21 +494,22 @@ char check_sieve(const sieve_t *const cc1,
   }
 
   char ret = 0;
+  int thread_id = pthread_self();
   
   /* check original sieveing */
   if (!ary_eql(cc1, cc1_cpy, start, sieve_words)) {
-    error_msg("[EE] cc1 not equal with easy sieving!\n");
-    ret = -1;;
+    error_msg("[EE] thread-%d cc1 not equal with easy sieving!\n", thread_id);
+    ret = -1;
   }
   
   if (!ary_eql(cc2, cc2_cpy, start, sieve_words)) {
-    error_msg("[EE] cc2 not equal with easy sieving!\n");
-    ret = -1;;
+    error_msg("[EE] thread-%d cc2 not equal with easy sieving!\n", thread_id);
+    ret = -1;
   }
   
   if (!ary_eql(twn, twn_cpy, start, sieve_words)) {
-    error_msg("[EE] twn not equal with easy sieving!\n");
-    ret = -1;;
+    error_msg("[EE] thread-%d twn not equal with easy sieving!\n", thread_id);
+    ret = -1;
   }
   
   for (e = 0; e < extensions; e++) {
@@ -522,18 +523,30 @@ char check_sieve(const sieve_t *const cc1,
     sieve_t *ext_ptr_twn_cpy = ext_twn_cpy + sieve_words * e;
 
     if (!ary_eql(ext_ptr_cc1, ext_ptr_cc1_cpy, sieve_words / 2, sieve_words)) {
-      error_msg("[EE] ext_cc1[%" PRIu32 "] not equal with easy sieving!\n", e);
-      ret = -1;;
+      error_msg("[EE] thread-%d ext_cc1[%" PRIu32 
+                "] not equal with easy sieving!\n", 
+                thread_id, 
+                e);
+
+      ret = -1;
     }
 
     if (!ary_eql(ext_ptr_cc2, ext_ptr_cc2_cpy, sieve_words / 2, sieve_words)) {
-      error_msg("[EE] ext_cc2[%" PRIu32 "] not equal with easy sieving!\n", e);
-      ret = -1;;
+      error_msg("[EE] thread-%d ext_cc2[%" PRIu32 
+                "] not equal with easy sieving!\n", 
+                 thread_id,
+                 e);
+
+      ret = -1;
     }
 
     if (!ary_eql(ext_ptr_twn, ext_ptr_twn_cpy, sieve_words / 2, sieve_words)) {
-      error_msg("[EE] ext_twn[%" PRIu32 "] not equal with easy sieving!\n", e);
-      ret = -1;;
+      error_msg("[EE] thread-%d ext_twn[%" PRIu32 
+                "] not equal with easy sieving!\n", 
+                thread_id,
+                e);
+
+      ret = -1;
     }
   }
 
