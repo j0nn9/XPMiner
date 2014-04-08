@@ -57,16 +57,16 @@ static ShareFiFo pending_shares;
 /**
  * add a new element (share) to a fifo queue
  */
-static inline void fifo_add(ShareFiFo fifo, FifoE *e) {
+static inline void fifo_add(ShareFiFo *fifo, FifoE *e) {
 
   pthread_mutex_lock(&mutex);   
-  if (fifo.start == NULL)       
-    fifo.start = e;             
+  if (fifo->start == NULL)       
+    fifo->start = e;             
                                 
-  if (fifo.end != NULL)         
-    fifo.end->next = e;         
+  if (fifo->end != NULL)         
+    fifo->end->next = e;         
                                 
-  fifo.end = e;                 
+  fifo->end = e;                 
   pthread_mutex_unlock(&mutex); 
                                 
 } 
@@ -74,16 +74,16 @@ static inline void fifo_add(ShareFiFo fifo, FifoE *e) {
 /**
  * remove a element (pending share) from a fifo queue
  */
-static inline FifoE *fifo_rem(ShareFiFo fifo) {
+static inline FifoE *fifo_rem(ShareFiFo *fifo) {
 
   pthread_mutex_lock(&mutex);         
-  FifoE *e = fifo.start;                     
+  FifoE *e = fifo->start;                     
                                       
-  if (fifo.start == fifo.end)         
-    fifo.end = NULL;                  
+  if (fifo->start == fifo->end)         
+    fifo->end = NULL;                  
                                       
-  if (fifo.start != NULL)             
-    fifo.start = fifo.start->next;    
+  if (fifo->start != NULL)             
+    fifo->start = fifo->start->next;    
   pthread_mutex_unlock(&mutex);       
   
   return e;
@@ -298,7 +298,7 @@ int recv_work(MinerArgs *args) {
         return -1;
 
       /* get the next pending share */
-      FifoE *next_share = fifo_rem(pending_shares);
+      FifoE *next_share = fifo_rem(&pending_shares);
 
       /* recieved share result for non existant share */
       if (next_share == NULL)
@@ -353,12 +353,12 @@ void submit_share(BlockHeader *share,
 
   /* add share verbose mesage to the pending queue */
   FifoE *share_info = (FifoE *) calloc(sizeof(FifoE), 1);
-  sprintf(share_info->str, "Found Chain: %s%02x.%x =>",  
+  sprintf(share_info->str, "Found Chain: %s%02x.%06x =>",  
           chain_str, 
           chain_length(difficulty), 
           fractional_length(difficulty));
 
-  fifo_add(pending_shares, share_info);
+  fifo_add(&pending_shares, share_info);
 
 
   pthread_mutex_lock(&mutex);
