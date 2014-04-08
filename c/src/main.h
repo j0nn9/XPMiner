@@ -46,7 +46,7 @@ typedef struct PrimeTable  PrimeTable;
 /**
  * default number of sieve percentage
  */
-#define DEFAULT_SIEVE_PRIMES 300000
+#define DEFAULT_SIEVE_PRIMES 30000
 
 /**
  * default sieve size
