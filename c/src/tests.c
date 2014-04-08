@@ -3,6 +3,7 @@
  */
 #ifdef DEBUG
 
+#include <math.h>
 #include <stdio.h>
 #include <gmp.h>
 
@@ -10,7 +11,9 @@
 
 #ifdef CHECK_MULLTIPLIER
 /**
- * this checks that the calculated multiplier:
+ * this checks the calculated multiplier (i), working
+ * as expected by testing if all sieve enties (n * p + i) * H +/- 1
+ * to be divisieble by i
  */
 char check_mulltiplier(const mpz_t mpz_primorial,
                        const uint32_t *const cc1_muls, 
@@ -29,8 +32,6 @@ char check_mulltiplier(const mpz_t mpz_primorial,
   /* test the cc1 multiplier */
   for (i = min_prime; i < max_prime; i++) {
     
-    printf("[DD] testing prime cc1 multiplier %" PRIu32 "   \r", max_prime - i);
-
     /* skipp if there is no multiplier for this prime avilabe */
     if (cc1_muls[i * layers] == UINT32_MAX) continue;
 
@@ -54,18 +55,18 @@ char check_mulltiplier(const mpz_t mpz_primorial,
  
         /* now test if the prime candidate is divisible by the prime */
         if (mpz_tdiv_ui(mpz_composite, primes[i]) != 0) {
-          
-          printf("[EE] multiplier test failed for cc1 candidate:\n"
-                 "[EE] multiplier: %" PRIu32 "\n"
-                 "[EE] layer:      %" PRIu32 "\n"
-                 "[EE] prime:      %" PRIu32 "\n"
-                 "[EE] primorial:  ",
-                 cc1_muls[i * layers + l],
-                 l,
-                 primes[i]);
+
+          error_msg("[EE] multiplier test failed for cc1 candidate:\n"
+                    "[EE] multiplier:  %" PRIu32 "\n"
+                    "[EE] layer:       %" PRIu32 "\n"
+                    "[EE] prime:       %" PRIu32 "\n"
+                    "[EE] primorial:   ",
+                    cc1_muls[i * layers + l],
+                    l,
+                    primes[i]);
  
-          mpz_out_str(stdout, 10, mpz_primorial);
-          printf("\n");
+          print_mpz(mpz_primorial);
+          error_msg("\n");
  
           mpz_clear(mpz_composite);
  
@@ -77,8 +78,6 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 
   /* test the cc2 multiplier */
   for (i = min_prime; i < max_prime; i++) {
-
-    printf("[DD] testing prime cc2 multiplier %" PRIu32 "   \r", max_prime - i);
 
     /* skipp if there is no multiplier for this prime avilabe */
     if (cc2_muls[i * layers] == UINT32_MAX) continue;
@@ -104,17 +103,17 @@ char check_mulltiplier(const mpz_t mpz_primorial,
         /* now test if the prime candidate is divisible by the prime */
         if (mpz_tdiv_ui(mpz_composite, primes[i]) != 0) {
           
-          printf("[EE] multiplier test failed for cc2 candidate:\n"
-                 "[EE] multiplier: %" PRIu32 "\n"
-                 "[EE] layer:      %" PRIu32 "\n"
-                 "[EE] prime:      %" PRIu32 "\n"
-                 "[EE] primorial:  ",
-                 cc1_muls[i * layers + l],
-                 l,
-                 primes[i]);
+          error_msg("[EE] multiplier test failed for cc2 candidate:\n"
+                    "[EE] multiplier: %" PRIu32 "\n"
+                    "[EE] layer:      %" PRIu32 "\n"
+                    "[EE] prime:      %" PRIu32 "\n"
+                    "[EE] primorial:  ",
+                    cc1_muls[i * layers + l],
+                    l,
+                    primes[i]);
        
-          mpz_out_str(stdout, 10, mpz_primorial);
-          printf("\n");
+          print_mpz(mpz_primorial);
+          error_msg("\n");
           
           mpz_clear(mpz_composite);
        
@@ -126,7 +125,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 
   mpz_clear(mpz_composite);
 
-  printf("\r[DD] prime multiplier tested succesfull     \n");
+  error_msg("[DD] prime multiplier tested succesfull\n");
 
   return 0;
 }
@@ -134,9 +133,10 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 
 #ifdef CHECK_CANDIDATES
 /**
- * test if an candidate array was soeved correctly
+ * test if an candidate array was sieved correctly
+ * (testing that all sieved indexes are not chains of lenght chain_length)
  */
-char chech_candidates(const mpz_t mpz_primorial,
+char check_candidates(const mpz_t mpz_primorial,
                       const sieve_t *const all,
                       const sieve_t *const cc1,
                       const sieve_t *const twn,
@@ -144,8 +144,6 @@ char chech_candidates(const mpz_t mpz_primorial,
                       const uint32_t extension,
                       const uint32_t sieve_words,
                       TestParams *const test_params) {
-
-  return 0; // disabled
 
   mpz_t mpz_origin;
   mpz_init(mpz_origin);
@@ -155,9 +153,6 @@ char chech_candidates(const mpz_t mpz_primorial,
        i < sieve_words; 
        i++) {
 
-    printf("[DD] cheching sieve for extension %" PRIu32 ": %" PRIu32 "  \r",
-           extension, sieve_words - i);
-    
     const sieve_t word = all[i];
     
     sieve_t n, bit;
@@ -171,25 +166,25 @@ char chech_candidates(const mpz_t mpz_primorial,
                    mpz_primorial, 
                    (word_bits * i + bit) << extension);
 
-        uint32_t difficulty;
-        char     *type;
+        uint32_t chain;
+        char     type;
 
         /* bi-twin candidate */
         if ((twn[i] & n) == 0) {
           
-          difficulty = twn_chain_test(mpz_origin, test_params); 
+          chain = twn_chain_test(mpz_origin, test_params); 
 
           type = BI_TWIN_CHAIN;
         /* cc1 candidate */
         } else if ((cc1[i] & n) == 0) {
 
-          difficulty = cc1_chain_test(mpz_origin, test_params);
+          chain = cc1_chain_test(mpz_origin, test_params);
 
           type = FIRST_CUNNINGHAM_CHAIN;
         /* cc2 candidate */
         } else {
         
-          difficulty = cc2_chain_test(mpz_origin, test_params);
+          chain = cc2_chain_test(mpz_origin, test_params);
 
           type = SECOND_CUNNINGHAM_CHAIN;
         }
@@ -198,16 +193,16 @@ char chech_candidates(const mpz_t mpz_primorial,
          * check that the sieved candidate was not a cunningham
          * candidate of chain_length 
          */
-        if (chain_length(difficulty) >= chain_length) {
+        if (chain >= chain_length) {
           
-          printf("[EE] multiplier test failed for %s candidate:\n"
-                 "[EE] multiplier: %" PRISIEVET "\n"
-                 "[EE] origin:     ",
-                 type,
-                 (word_bits * i + bit) << extension);
+          error_msg("[EE] multiplier test failed for %s candidate:\n"
+                    "[EE] multiplier: %" PRISIEVET "\n"
+                    "[EE] origin:     ",
+                    type,
+                    (word_bits * i + bit) << extension);
 
-          mpz_out_str(stdout, 10, mpz_origin);
-          printf("\n");
+          print_mpz(mpz_origin);
+          error_msg("\n");
           mpz_clear(mpz_origin);
 
 
@@ -219,7 +214,7 @@ char chech_candidates(const mpz_t mpz_primorial,
   
   mpz_clear(mpz_origin);
 
-  printf("\r[DD] succesfull tested sieve for extension %" PRIu32 "     \n",
+  error_msg("[DD] succesfull tested sieve for extension %" PRIu32 "\n",
            extension);
 
   return 0;
@@ -250,16 +245,16 @@ char check_ratio(const SieveStats *const stats) {
        cc1 / twn > 1)) {
 
     
-    printf("[EE] unusual candidate ratio: twn %" 
-           PRIu64 " cc2 %" PRIu64 " cc1 %" PRIu64 "\n",
-           twn,
-           cc2,
-           cc1);
+    error_msg("[EE] unusual candidate ratio: twn %" 
+              PRIu64 " cc2 %" PRIu64 " cc1 %" PRIu64 "\n",
+              twn,
+              cc2,
+              cc1);
 
     return -1;
   }
 
-  printf("[DD] succesfully tested sieve candidate ratio\n");
+  error_msg("[DD] succesfully tested sieve candidate ratio\n");
 
   return 0;
 }
@@ -279,7 +274,7 @@ static void sieve_from_to(sieve_t *const candidates,
                           const uint32_t max_prime) {
 
   /* wipe the array */
-  memset(candidates, 0, sieve_size / word_bits);
+  memset(candidates, 0, sieve_size / 8);
 
   uint32_t i;
   for (i = min_prime; i < max_prime; i++) {
@@ -320,39 +315,62 @@ char ary_eql(const sieve_t *const ary1,
  * easy sieveing without cache optimation and stuff to check
  * the high performace version
  */
-#ifdef USE_EASY_SIEVE
-char check_sieve(sieve_t *const cc1,
-                 sieve_t *const cc2,
-                 sieve_t *const twn,
-                 sieve_t *const ext_cc1,
-                 sieve_t *const ext_cc2,
-                 sieve_t *const ext_twn,
-                 const uint32_t *const cc1_muls,
-                 const uint32_t *const cc2_muls,
-                 const uint32_t chain_length,
-                 const uint32_t sieve_words,
-                 const uint32_t extensions,
-                 const uint32_t layers,
-                 const uint32_t *const primes,
-                 const uint32_t min_prime,
-                 const uint32_t max_prime) {
-#else
 char check_sieve(const sieve_t *const cc1,
                  const sieve_t *const cc2,
                  const sieve_t *const twn,
                  const sieve_t *const ext_cc1,
                  const sieve_t *const ext_cc2,
                  const sieve_t *const ext_twn,
-                 const uint32_t *const cc1_muls,
-                 const uint32_t *const cc2_muls,
+                 const uint32_t *const cc1_muls_orig,
+                 const uint32_t *const cc2_muls_orig,
                  const uint32_t chain_length,
                  const uint32_t sieve_words,
                  const uint32_t extensions,
                  const uint32_t layers,
                  const uint32_t *const primes,
                  const uint32_t min_prime,
-                 const uint32_t max_prime) {
-#endif                 
+                 const uint32_t max_prime,
+                 const mpz_t    mpz_primorial,
+                 const uint32_t sieve_size,
+                 const uint32_t use_first_half) {
+
+  /* copy and reset the multiplayers */
+  uint32_t *cc1_muls = malloc(sizeof(uint32_t) * layers * max_prime);
+  uint32_t *cc2_muls = malloc(sizeof(uint32_t) * layers * max_prime);
+
+  memcpy(cc1_muls, cc1_muls_orig, sizeof(uint32_t) * layers * max_prime);
+  memcpy(cc2_muls, cc2_muls_orig, sizeof(uint32_t) * layers * max_prime);
+  
+  uint32_t i;
+  for (i = min_prime; i < max_prime; i++) {
+
+    const uint32_t prime  = primes[i];
+    const uint32_t offset = layers * i;
+    uint32_t l;
+
+
+    for (l = 0; l < layers; l++) {
+    
+      if (cc1_muls[offset + l] != UINT32_MAX)
+        cc1_muls[offset + l] %= prime;
+
+      if (cc2_muls[offset + l] != UINT32_MAX)
+        cc2_muls[offset + l] %= prime;
+    }
+  }
+
+#ifdef CHECK_MULLTIPLIER
+  check_mulltiplier(mpz_primorial,
+                    cc1_muls, 
+                    cc2_muls,
+                    sieve_size,
+                    layers,
+                    primes,
+                    min_prime,
+                    max_prime);
+#else
+  (void) mpz_primorial;
+#endif
 
   sieve_t *cc1_cpy = calloc(sizeof(sieve_t), sieve_words);
   sieve_t *cc2_cpy = calloc(sizeof(sieve_t), sieve_words);
@@ -364,16 +382,31 @@ char check_sieve(const sieve_t *const cc1,
   sieve_t *cc1_layer = calloc(sizeof(sieve_t), sieve_words);
   sieve_t *cc2_layer = calloc(sizeof(sieve_t), sieve_words);
 
-  const uint32_t sieve_size = sieve_words * word_bits;
   const uint32_t twn_cc1_layers = (chain_length + 1) / 2;
   const uint32_t twn_cc2_layers = chain_length       / 2;
+  const uint32_t start = (use_first_half ? 0 : sieve_words / 2);
 
   uint32_t w, e, l;
   for (l = 0; l < layers; l++) {
     
     /* calculate layer i */
-    sieve_from_to(cc1_layer, cc1_muls, sieve_size, layers, l, primes, min_prime, max_prime);
-    sieve_from_to(cc2_layer, cc2_muls, sieve_size, layers, l, primes, min_prime, max_prime);
+    sieve_from_to(cc1_layer, 
+                  cc1_muls, 
+                  sieve_size, 
+                  layers, 
+                  l, 
+                  primes, 
+                  min_prime, 
+                  max_prime);
+
+    sieve_from_to(cc2_layer, 
+                  cc2_muls, 
+                  sieve_size, 
+                  layers, 
+                  l, 
+                  primes, 
+                  min_prime, 
+                  max_prime);
 
     /* applay the layer */
     if (l < chain_length) {
@@ -447,18 +480,18 @@ char check_sieve(const sieve_t *const cc1,
   char ret = 0;
   
   /* check original sieveing */
-  if (!ary_eql(cc1, cc1_cpy, 0, sieve_words)) {
-    //printf("[EE] cc1 not equal with easy sieving!\n");
+  if (!ary_eql(cc1, cc1_cpy, start, sieve_words)) {
+    error_msg("[EE] cc1 not equal with easy sieving!\n");
     ret = -1;;
   }
   
-  if (!ary_eql(cc2, cc2_cpy, 0, sieve_words)) {
-    //printf("[EE] cc2 not equal with easy sieving!\n");
+  if (!ary_eql(cc2, cc2_cpy, start, sieve_words)) {
+    error_msg("[EE] cc2 not equal with easy sieving!\n");
     ret = -1;;
   }
   
-  if (!ary_eql(twn, twn_cpy, 0, sieve_words)) {
-    //printf("[EE] twn not equal with easy sieving!\n");
+  if (!ary_eql(twn, twn_cpy, start, sieve_words)) {
+    error_msg("[EE] twn not equal with easy sieving!\n");
     ret = -1;;
   }
   
@@ -473,33 +506,21 @@ char check_sieve(const sieve_t *const cc1,
     sieve_t *ext_ptr_twn_cpy = ext_twn_cpy + sieve_words * e;
 
     if (!ary_eql(ext_ptr_cc1, ext_ptr_cc1_cpy, sieve_words / 2, sieve_words)) {
-      //printf("[EE] ext_cc1[%" PRIu32 "] not equal with easy sieving!\n", e);
+      error_msg("[EE] ext_cc1[%" PRIu32 "] not equal with easy sieving!\n", e);
       ret = -1;;
     }
 
     if (!ary_eql(ext_ptr_cc2, ext_ptr_cc2_cpy, sieve_words / 2, sieve_words)) {
-      //printf("[EE] ext_cc2[%" PRIu32 "] not equal with easy sieving!\n", e);
+      error_msg("[EE] ext_cc2[%" PRIu32 "] not equal with easy sieving!\n", e);
       ret = -1;;
     }
 
     if (!ary_eql(ext_ptr_twn, ext_ptr_twn_cpy, sieve_words / 2, sieve_words)) {
-      //printf("[EE] ext_twn[%" PRIu32 "] not equal with easy sieving!\n", e);
+      error_msg("[EE] ext_twn[%" PRIu32 "] not equal with easy sieving!\n", e);
       ret = -1;;
     }
   }
 
-#ifdef USE_EASY_SIEVE
-  if (ret != 0) {
-    printf("cpy..\n");
-    memcpy(cc1, cc1_cpy, sizeof(sieve_t) * sieve_words);
-    memcpy(cc2, cc2_cpy, sizeof(sieve_t) * sieve_words);
-    memcpy(twn, twn_cpy, sizeof(sieve_t) * sieve_words);
-
-    memcpy(ext_cc1, ext_cc1_cpy, sizeof(sieve_t) * sieve_words * extensions);
-    memcpy(ext_cc2, ext_cc2_cpy, sizeof(sieve_t) * sieve_words * extensions);
-    memcpy(ext_twn, ext_twn_cpy, sizeof(sieve_t) * sieve_words * extensions);
-  }
-#endif
 
   free(cc1_cpy);
   free(cc2_cpy);
@@ -512,18 +533,23 @@ char check_sieve(const sieve_t *const cc1,
   free(cc2_layer);
 
   if (ret == 0)
-    printf("[DD] Succesfully tested sieveing\n");
+    error_msg("[DD] Succesfully tested sieveing\n");
 
   return ret;
 }
 #endif 
 
 #ifdef CHECK_PRIMES
-char check_primes(const uint32_t *const primes, const uint32_t len) {
+/**
+ * checks the precalculated primes and inverses of two
+ */
+char check_primes(const uint32_t *const primes,
+                  const uint32_t *const two_inverse, 
+                  const uint32_t len) {
 
 
   if (primes[0] != 2) {
-    printf("[EE] primes[0] != 2\n");
+    error_msg("[EE] primes[0] != 2\n");
     return -1;
   }
 
@@ -534,17 +560,90 @@ char check_primes(const uint32_t *const primes, const uint32_t len) {
     for (; max > 1; max--) {
       
       if (primes[i] % max == 0) {
-        printf("[EE] primes[%" PRIu32 "] = %" PRIu32 "is not a prime!!!\n",
-               i,
-               primes[i]);
+        error_msg("[EE] primes[%" PRIu32 "] = %" PRIu32 "is not a prime!!!\n",
+                  i,
+                  primes[i]);
         return -1;
       }
     }
+
+    if (((uint64_t) 2) * ((uint64_t) two_inverse[i]) % primes[i] != 1) {
+        error_msg("[EE] two_inverse[%" PRIu32 "] = %" PRIu32 
+                  "is not a valid inverse for prime %" PRIu32 "!!!\n",
+                  i,
+                  two_inverse[i],
+                  primes[i]);
+
+    }
   }
 
-  printf("[DD] succesfully checkt primes\n");
+  error_msg("[DD] succesfully checkt primes\n");
   return 0;
 }
+#endif
+
+#ifdef CHACK_SHARE
+
+/**
+ * chacks if a BlockHeader to submit is valid
+ */
+char check_share(BlockHeader *share, uint32_t orig_difficulty, char type) {
+
+  mpz_t mpz_multiplier, mpz_origin, mpz_hash;
+
+  mpz_init(mpz_multiplier);
+  mpz_init(mpz_origin);
+  mpz_init(mpz_hash);
+
+  TestParams params;
+  init_test_params(&params);
+  
+  uint8_t hash[SHA256_DIGEST_LENGTH];
+  get_header_hash(share, hash);
+  mpz_set_sha256(mpz_hash, hash);
+
+  mpz_import(mpz_multiplier, 
+             share->multiplier_length, 
+             -1, 
+             sizeof(share->primemultiplier[0]), 
+             -1, 
+             0, 
+             share->primemultiplier);
+
+  mpz_mul(mpz_origin, mpz_hash, mpz_multiplier);
+
+  uint8_t chain_length = 0;
+ 
+  if (type == BI_TWIN_CHAIN) {
+    
+    chain_length = twn_chain_test(mpz_origin, &params);
+  } else if (type == FIRST_CUNNINGHAM_CHAIN) {
+
+    chain_length = cc1_chain_test(mpz_origin, &params);
+  } else {
+
+    chain_length = cc2_chain_test(mpz_origin, &params);
+  }
+
+  uint32_t difficulty = chain_length << FRACTIONAL_BITS;
+  difficulty += get_fractional_length(mpz_origin,
+                                      type,
+                                      chain_length,
+                                      &params);
+
+  if (difficulty != orig_difficulty) {
+    
+    error_msg("[EE] share check failed: difficulty %x orig: %x\n", 
+              difficulty,
+              orig_difficulty);
+
+    return -1;
+  }
+
+  error_msg("[DD] Succesfully check share\n");
+  return 0;
+}
+
 #endif
 
 #endif /* DEBUG */

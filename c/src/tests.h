@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <gmp.h>
 
+/**
+ * do nothing if debug is not enabled
+ */
 #ifndef DEBUG
 
 #define check_mulltiplier(mpz_primorial,    \
@@ -18,7 +21,7 @@
                           min_prime,        \
                           max_prime)
 
-#define chech_candidates(mpz_primorial,     \
+#define check_candidates(mpz_primorial,     \
                          all,               \
                          cc1,               \
                          twn,               \
@@ -43,9 +46,14 @@
                     layers,                  \
                     primes,                  \
                     min_prime,               \
-                    max_prime) 
+                    max_prime,               \
+                    mpz_primorial,           \
+                    sieve_size,              \
+                    use_first_half)
 
-#define check_primes(primes, len)
+#define check_primes(primes, two_inverses, len)
+
+#define check_share(share, orig_difficulty, type)
    
 #else
 
@@ -74,7 +82,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 #endif
 
 #ifndef CHECK_CANDIDATES
-#define chech_candidates(mpz_primorial,     \
+#define check_candidates(mpz_primorial,     \
                          all,               \
                          cc1,               \
                          twn,               \
@@ -87,7 +95,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 /**
  * test if an candidate array was soeved correctly
  */
-char chech_candidates(const mpz_t mpz_primorial,
+char check_candidates(const mpz_t mpz_primorial,
                       const sieve_t *const all,
                       const sieve_t *const cc1,
                       const sieve_t *const twn,
@@ -121,29 +129,15 @@ char check_ratio(const SieveStats *const stats);
                     layers,                  \
                     primes,                  \
                     min_prime,               \
-                    max_prime) 
+                    max_prime,               \
+                    mpz_primorial,           \
+                    sieve_size,              \
+                    use_first_half)
 #else
 /**
  * easy sieveing without cache optimation and stuff to check
  * the high performace version
  */
-#ifdef USE_EASY_SIEVE
-char check_sieve(sieve_t *const cc1,
-                 sieve_t *const cc2,
-                 sieve_t *const twn,
-                 sieve_t *const ext_cc1,
-                 sieve_t *const ext_cc2,
-                 sieve_t *const ext_twn,
-                 const uint32_t *const cc1_muls,
-                 const uint32_t *const cc2_muls,
-                 const uint32_t chain_length,
-                 const uint32_t sieve_words,
-                 const uint32_t extensions,
-                 const uint32_t layers,
-                 const uint32_t *const primes,
-                 const uint32_t min_prime,
-                 const uint32_t max_prime);
-#else
 char check_sieve(const sieve_t *const cc1,
                  const sieve_t *const cc2,
                  const sieve_t *const twn,
@@ -158,14 +152,28 @@ char check_sieve(const sieve_t *const cc1,
                  const uint32_t layers,
                  const uint32_t *const primes,
                  const uint32_t min_prime,
-                 const uint32_t max_prime);
-#endif                 
+                 const uint32_t max_prime,
+                 const mpz_t    mpz_primorial,
+                 const uint32_t sieve_size,
+                 const uint32_t use_first_half);
 #endif
 
 #ifndef CHECK_PRIMES
-#define check_primes(primes, len)
+#define check_primes(primes, two_inverses, len)
 #else
-char check_primes(const uint32_t *const primes, const uint32_t len);
+char check_primes(const uint32_t *const primes, 
+                  const uint32_t *const two_inverse, 
+                  const uint32_t len);
+#endif
+
+#ifndef CHACK_SHARE
+#define check_share(share, orig_difficulty, type)
+#else
+
+/**
+ * chacks if a BlockHeader to submit is valid
+ */
+char check_share(BlockHeader *share, uint32_t orig_difficulty, char type);
 #endif
 
 #endif /* DEBUG */
