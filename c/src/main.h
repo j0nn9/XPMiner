@@ -46,12 +46,12 @@ typedef struct PrimeTable  PrimeTable;
 /**
  * default number of sieve percentage
  */
-#define DEFAULT_SIEVE_PRIMES 30000
+#define DEFAULT_SIEVE_PRIMES 28000
 
 /**
  * default sieve size
  */
-#define DEFAULT_SIEVE_SIZE 4000000u
+#define DEFAULT_SIEVE_SIZE 4050000u
 
 /**
  * the default numper of primes the block header hash
@@ -65,7 +65,7 @@ typedef struct PrimeTable  PrimeTable;
  * the default number of primes the primorial
  * should be divisible by
  */
-#define DEFAULT_NUM_PRIMES_IN_PRIMORIAL 5
+#define DEFAULT_NUM_PRIMES_IN_PRIMORIAL 9
 
 /**
  * the default chain length to mine

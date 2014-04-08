@@ -86,10 +86,12 @@ void print_license() {
 "                                                                          \n"\
 "  --sieve-primes  [NUM]        the number of primes to sieve              \n"\
 "                               also sensitive for tuning                  \n"\
-"                               try 5000 - 50000, default: 30000           \n"\
+"                               try 5000 - 50000, default: 28000           \n"\
 "                                                                          \n"\
 "  --sieve-size  [NUM]          the sieve size not so sensitive for        \n"\
-"                               try 1000000 - 10000000, default: 4000000   \n"\
+"                               try 1000000 - 10000000, default: 4050000   \n"\
+"                               (will be rounded down to a multiply        \n"\
+"                                of cache-bits)                            \n"\
 "                                                                          \n"\
 "  --primes-in-hash  [NUM]      the number of primes the hash should be    \n"\
 "                               divisible by (2,3,5,7 ...)                 \n"\
@@ -103,7 +105,7 @@ void print_license() {
 "                               primes you multiplie the more chain        \n"\
 "                               candidates you get from the sieve          \n"\
 "                               but the prime test will run slower         \n"\
-"                               because of the higer numbers, default: 5   \n"\
+"                               because of the higer numbers, default: 9   \n"\
 "                                                                          \n"\
 "  --chain-length  [NUM]        the chain length you are mining for        \n"\
 "                               the lower you set this the more smal       \n"\
