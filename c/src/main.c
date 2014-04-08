@@ -177,8 +177,10 @@ void main_thread(MinerArgs *args) {
   }
 
   /* shutdown stats thread */
-  if (!opts.quiet) 
+  if (!opts.quiet) {
+    pthread_kill(stats, SIGUSR1);
     pthread_join(stats, NULL);
+  }
 
   /* shutdown miner threads */
   for (i = 0; i < opts.num_threads; i++) {
@@ -201,8 +203,8 @@ void main_thread(MinerArgs *args) {
  */
 void soft_shutdown(int signum) {
   
-  /* not used */
-  (void) signum;
+  /* stats thread killed */
+  if (signum == SIGUSR1) return;
 
   static int shutdown = 0;
   running = 0;
@@ -238,6 +240,7 @@ int main(int argc, char *argv[]) {
   sigaction(SIGINT,  &action, NULL);
   sigaction(SIGTERM, &action, NULL);
   sigaction(SIGALRM, &action, NULL);
+  sigaction(SIGUSR1, &action, NULL); /* to kill stats thread */
 
   /* continue mining if terminal lost connection */
   signal(SIGHUP,  SIG_IGN);
