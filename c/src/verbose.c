@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
+#include <gmp.h>
 
 #include "main.h"
 
@@ -85,7 +86,7 @@ void print_license() {
 "                                                                          \n"\
 "  --sieve-primes  [NUM]        the number of primes to sieve              \n"\
 "                               also sensitive for tuning                  \n"\
-"                               try 5000 - 50000, default: 300000          \n"\
+"                               try 5000 - 50000, default: 30000           \n"\
 "                                                                          \n"\
 "  --sieve-size  [NUM]          the sieve size not so sensitive for        \n"\
 "                               try 1000000 - 10000000, default: 4000000   \n"\
@@ -190,6 +191,16 @@ void info_msg(char *format, ...) {
 }
 
 /**
+ * prints an mpz value (debugging)
+ */
+void print_mpz(const mpz_t mpz) {
+  
+  pthread_mutex_lock(&mutex);
+  mpz_out_str(stderr, 10, mpz);
+  pthread_mutex_unlock(&mutex);
+}
+
+/**
  * generate and print statistics
  */ 
 void print_stats(MinerArgs *stats, uint32_t n_threads) {
@@ -208,7 +219,11 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
   memset(&sieve_stats, 0, sizeof(SieveStats));
   uint64_t primes = 0;
 
-  time_t cur_time = time(NULL);
+  time_t cur_time     = time(NULL);
+  struct tm *timeinfo = localtime(&cur_time);
+
+  char date_time[80];
+  strftime(date_time, 80, "[%F %T]",timeinfo);
 
   
   /* collect the informationf from the different threads */
@@ -258,9 +273,11 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
 
 
   /* output satistics */
-  info_msg("T/s %" PRIu32 "  P/s %" PRIu32 "  5ch/h (%" PRIu32 
-           " / %" PRIu32 ")",
-           test_per_sec, primes_per_sec, 
+  info_msg("%s  T/s %" PRIu32 "  P/s %" PRIu32 "  5ch/h (%" PRIu32 
+           " / %" PRIu32 ") ",
+           date_time,
+           test_per_sec, 
+           primes_per_sec, 
            _5_chains_per_hour, 
            avg_5_chs_per_hour);
 
@@ -275,32 +292,32 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
       info_msg("%" PRIu32 "ch: %" PRIu32 " (%.1F%% | %.1F/h) ",
                i,
                avg_chains,
-               avg_chains / (double) all_shares,
+               ((double) avg_chains * 100) / ((double) all_shares),
                avg_chains * 3600 / passed_time);
 
     }
   }
 
-  /* output share adn rejected info */
+  /* output share info */
+  if (opts.stats.block > 0)
+    info_msg("BK: %" PRIu32 " (%0.1f%%) ", 
+             opts.stats.block, 
+             100 * opts.stats.block / (double) all_shares);
+
   if (opts.stats.share > 0)
     info_msg("VL: %" PRIu32 " (%0.1f%%) ", 
              opts.stats.share, 
-             opts.stats.share / (double) all_shares);
+             100 * opts.stats.share / (double) all_shares);
 
   if (opts.stats.rejected > 0)
-    info_msg("VL: %" PRIu32 " (%0.1f%%) ", 
+    info_msg("RJ: %" PRIu32 " (%0.1f%%) ", 
              opts.stats.rejected, 
-             opts.stats.rejected / (double) all_shares);
+             100 * opts.stats.rejected / (double) all_shares);
 
   if (opts.stats.stale > 0)
-    info_msg("VL: %" PRIu32 " (%0.1f%%) ", 
+    info_msg("ST: %" PRIu32 " (%0.1f%%) ", 
              opts.stats.stale, 
-             opts.stats.stale / (double) all_shares);
-
-  if (opts.stats.block > 0)
-    info_msg("VL: %" PRIu32 " (%0.1f%%) ", 
-             opts.stats.block, 
-             opts.stats.block / (double) all_shares);
+             100 * opts.stats.stale / (double) all_shares);
 
   info_msg("\n");
 
@@ -309,7 +326,7 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
   if (opts.verbose) {
     info_msg("Tests: %d\n", sieve_stats.tests);
 
-    info_msg("\n1CC: ");                          
+    info_msg("1CC: ");                          
     for (n = 1; n < MAX_CHAIN_LENGTH; n++)
       if (sieve_stats.cc1[n] > 0)
         info_msg("%d: [%d] ", n, sieve_stats.cc1[n]);
@@ -372,6 +389,7 @@ void print_options() {
          "  max-prime-index:          %d\n"
          "  stats-interval:           %d\n"
          "  hash-primorial:           %d\n"
+         "  use-first-half:           %s\n"
          "  fixed-hash-multiplier:    ",
          PROG_NAME,
          opts.pool_fee,
@@ -392,7 +410,8 @@ void print_options() {
          opts.primes_in_primorial,
          opts.max_prime_index,
          opts.stats_interval,
-         opts.hash_primorial);
+         opts.hash_primorial,
+         (opts.use_first_half ? "true" : "false"));
 
   mpz_out_str(stdout, 10, opts.mpz_fixed_hash_multiplier);
   printf("\n\n");

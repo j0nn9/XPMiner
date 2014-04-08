@@ -4,6 +4,7 @@
 #ifndef __VERBOSE_H__
 #define __VERBOSE_H__
 
+#include <gmp.h>
 #include <inttypes.h>
 
 #include "main.h"
@@ -42,5 +43,10 @@ void print_license();
  * print help message and exit
  */
 void print_help();
+
+/**
+ * prints an mpz value (debugging)
+ */
+void print_mpz(const mpz_t mpz);
 
 #endif /* __VERBOSE_H__ */
