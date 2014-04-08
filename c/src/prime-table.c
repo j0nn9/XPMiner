@@ -108,7 +108,7 @@ static PrimeTable *save_primes(uint8_t *ary, uint32_t sieve_size) {
 PrimeTable *gen_prime_table(uint32_t sieve_size) {
 
   /* bit array for sieveing */
-  uint8_t *ary = (uint8_t *) calloc(sizeof(uint8_t), sieve_size / 8);
+  uint8_t *ary = (uint8_t *) calloc(sizeof(uint8_t), sieve_size / 8 + 6);
 
   if (ary == NULL) 
     errno_msg("failed to allocate space for prime table generation");
