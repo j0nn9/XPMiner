@@ -10,7 +10,7 @@
   * XPMiner's intension is to provide a readable and clean implementation
 of the Primecoin mining algorithm beside the whole Primecoin client.
 
-  * pure C code and only openssl and gmp dependencies
+  * pure C code and only pthread, openssl and gmp dependencies
 
   * highly configurable
 
@@ -27,6 +27,7 @@ is read- and understandability of the Primecoin mining algorithm!
 Also it's currently Linux only, sorry.
 
 ### required libraries
+  - pthread
   - openssl
   - gmp 
 
