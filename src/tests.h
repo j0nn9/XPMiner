@@ -1,6 +1,6 @@
 /**
  * Implementation of some test to check the accuracy of the prime search 
- * alorithm.
+ * algorithm.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -73,7 +73,7 @@
    
 #else
 
-#ifndef CHECK_MULLTIPLIER
+#ifndef CHECK_MULTIPLIER
 #define check_mulltiplier(mpz_primorial,    \
                           cc1_muls,         \
                           cc2_muls,         \
@@ -109,7 +109,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 #else
 
 /**
- * test if an candidate array was soeved correctly
+ * test if an candidate array was sieved correctly
  */
 char check_candidates(const mpz_t mpz_primorial,
                       const sieve_t *const all,
@@ -151,8 +151,8 @@ char check_ratio(const SieveStats *const stats);
                     use_first_half)
 #else
 /**
- * easy sieveing without cache optimation and stuff to check
- * the high performace version
+ * easy sieving without cache optimization and stuff to check
+ * the high performance version
  */
 char check_sieve(const sieve_t *const cc1,
                  const sieve_t *const cc2,
@@ -182,12 +182,12 @@ char check_primes(const uint32_t *const primes,
                   const uint32_t len);
 #endif
 
-#ifndef CHACK_SHARE
+#ifndef CHECK_SHARE
 #define check_share(share, orig_difficulty, type)
 #else
 
 /**
- * chacks if a BlockHeader to submit is valid
+ * checks if a BlockHeader to submit is valid
  */
 char check_share(BlockHeader *share, uint32_t orig_difficulty, char type);
 #endif

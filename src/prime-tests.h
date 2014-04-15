@@ -43,7 +43,7 @@
 static const uint32_t FRACTIONAL_BITS = 24;
 
 /**
- * bitmasks for the fractional and chain part of the chain_length
+ * bit mask for the fractional and chain part of the chain_length
  */
 static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;
 
@@ -59,7 +59,7 @@ static const uint32_t TARGET_FRACTIONAL_MASK = 0xFFFFFF;
   (chain_length & TARGET_FRACTIONAL_MASK)
 
 /**
- * helper varibales for primality testing
+ * helper values for primality testing
  */
 struct TestParams {
 
@@ -75,7 +75,7 @@ struct TestParams {
 };
 
 /**
- * initialize test params
+ * initialize test parameters
  */
 static inline void init_test_params(TestParams *const params) {
                                     
@@ -89,7 +89,7 @@ static inline void init_test_params(TestParams *const params) {
 }
 
 /**
-* clear test params
+* clear test parameters
 */
 static inline void clear_test_params(TestParams *const params) {
 
@@ -151,7 +151,7 @@ static inline uint32_t get_fractional_length(mpz_t mpz_origin,
       mpz_add_ui(params->mpz_n, params->mpz_n, 1); /* n = n + 1 */
   }
 
-  /* we need fermat reminder */
+  /* we need the fermat reminder */
   fermat_test(params->mpz_n, params);
 
   /* res = p - (2^(p - 1) mod p) */
@@ -167,7 +167,7 @@ static inline uint32_t get_fractional_length(mpz_t mpz_origin,
 
 #ifdef DEBUG
   if (n_fractional_length >= (1u << FRACTIONAL_BITS))
-    printf("[EE] FermatProbablePrimalityTest() : fractional assert");
+    printf("[EE] get_fractional_length() : fractional assert");
 #endif
 
   return n_fractional_length;
@@ -182,7 +182,7 @@ static inline uint32_t get_fractional_length(mpz_t mpz_origin,
  * sophie_germain:
  *    1: test for Cunningham Chain of the first kind:  n = 2p + 1
  *    0: test for Cunningham Chain of the second kind: n = 2p - 1
- *  returns wether the n is a prime or not
+ *  returns whether the n is a prime or not
  */
 static inline char euler_lagrange_lifchitz_test(mpz_t mpz_n, 
                                                 char sophie_germain,
@@ -260,7 +260,7 @@ static inline uint32_t cunningham_chain_test(mpz_t mpz_p,
   /* Euler-Lagrange-Lifchitz test for the following numbers in chain */
   mpz_set(params->mpz_n, mpz_p);
   
-  /* loop untill chain end is reatched */
+  /* loop until chain end is reached */
   for (;;) {
   
     chain_length++;

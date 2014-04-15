@@ -25,7 +25,7 @@
 #include "main.h"
 
 /**
- * mutex to avoid mutula excliution by writing output
+ * mutex to avoid mutual exclusion by writing output
  */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -34,9 +34,9 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
  * the license string
  */
 #define LICENSE                                                               \
-"    XPMiner is an standalone PrimeCoin poolminer                          \n"\
+"    XPMiner is a standalone Primecoin (XPM) CPU pool miner                \n"\
 "                                                                          \n"\
-"    Copyright (C)  2014  Jonny Frey                                       \n"\
+"    Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>               \n"\
 "                                                                          \n"\
 "    This program is free software: you can redistribute it and/or modify  \n"\
 "    it under the terms of the GNU General Public License as published by  \n"\
@@ -52,7 +52,7 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 "    along with this program.  If not, see <http://www.gnu.org/licenses/>. \n"
 
 /**
- * prints the license and exits the programm
+ * prints the license and exits the program
  */
 void print_license() {
   
@@ -68,7 +68,7 @@ void print_license() {
  * the help string
  */
 #define HELP                                                                  \
-"  XPMiner  Copyright (C)  2014  Jonny Frey                                \n"\
+"  XPMiner  Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>        \n"\
 "                                                                          \n"\
 "Required Options:                                                         \n"\
 "                                                                          \n"\
@@ -76,25 +76,25 @@ void print_license() {
 "                                                                          \n"\
 "  --pool-port  [NUM]           pool port to connect to                    \n"\
 "                                                                          \n"\
-"  --pool-user  [STR]           pooluser name (this is normaly your xpm    \n"\
+"  --pool-user  [STR]           pool user name (this is normally your xpm  \n"\
 "                               address)                                   \n"\
 "                                                                          \n"\
-"Aditional Options:                                                        \n"\
+"Additional Options:                                                       \n"\
 "                                                                          \n"\
 "  --license                    show license of this program               \n"\
 "                                                                          \n"\
 "  --pool-free  [NUM]           the fee in percent (1-100) not all pools   \n"\
-"                               allowes to set these option, default: 3    \n"\
+"                               allow to set these option, default: 3      \n"\
 "                                                                          \n"\
 "  --pool-pwd  [STR]            pool password (will be send sha1 encrypted)\n"\
 "                                                                          \n"\
 "  --num-threads  [NUM]         number of threads to use, default: 4       \n"\
 "                                                                          \n"\
 "  --miner-id  [NUM]            give your miner an id (0-65535)            \n"\
-"                               defualt: 0                                 \n"\
+"                               default: 0                                 \n"\
 "                                                                          \n"\
 "  --sieve-extensions [NUM]     the number of sieve extension to use       \n"\
-"                               this is the most senitive parameter for    \n"\
+"                               this is the most sensitive parameter for   \n"\
 "                               tuning try the range around your           \n"\
 "                               chain-length (10 +/- n)                    \n"\
 "                               default: 9 (xolominer)                     \n"\
@@ -112,26 +112,26 @@ void print_license() {
 "                               divisible by (2,3,5,7 ...)                 \n"\
 "                               the more primes you use the longer it      \n"\
 "                               takes to calculate the header hash,        \n"\
-"                               but sieveing will be faster                \n"\
+"                               but sieving will be faster                 \n"\
 "                               (use 0 - 9), default: 4                    \n"\
 "                                                                          \n"\
-"  --primes-in-primorial [NUM]  this is the number of aditional primes     \n"\
+"  --primes-in-primorial [NUM]  this is the number of additional primes    \n"\
 "                               multiplied to the header hash, the more    \n"\
-"                               primes you multiplie the more chain        \n"\
+"                               primes you multiply the more chain         \n"\
 "                               candidates you get from the sieve          \n"\
 "                               but the prime test will run slower         \n"\
-"                               because of the higer numbers, default: 9   \n"\
+"                               because of the higher numbers, default: 9  \n"\
 "                                                                          \n"\
 "  --chain-length  [NUM]        the chain length you are mining for        \n"\
-"                               the lower you set this the more smal       \n"\
-"                               and les big chains you get, but            \n"\
-"                               be aware of that pools usualy credit       \n"\
-"                               higher chains better, so this sould        \n"\
+"                               the lower you set this the more small      \n"\
+"                               and less big chains you get, but           \n"\
+"                               be aware of that pools usually credit      \n"\
+"                               higher chains better, so this should       \n"\
 "                               be the current difficulty in most cases    \n"\
 "                               default: 10                                \n"\
 "                                                                          \n"\
 "  --cache-bits  [NUM]          the number bits to sieve at once           \n"\
-"                               (cache optimation) default: 224000         \n"\
+"                               (cache optimization) default: 224000       \n"\
 "                                                                          \n"\
 "  --verbose                    print extra information                    \n"\
 "                               (you will not need this is most cases)     \n"\
@@ -139,19 +139,23 @@ void print_license() {
 "  --stats-interval  [NUM]      interval in seconds to print mining        \n"\
 "                               statistics, default: 60                    \n"\
 "                                                                          \n"\
-"  --pool-share  [NUM]          smalest share credited by your pool        \n"\
+"  --pool-share  [NUM]          smallest share credited by your pool       \n"\
 "                               default: 7                                 \n"\
 "                                                                          \n"\
-"  --use-first-half             if given this flag indecates that, the     \n"\
+"  --use-first-half             if given this flag indicates that, the     \n"\
 "                               first half of extension 0 (the basic       \n"\
-"                               sieve) should be use during sieveing       \n"\
-"                               in this first half are the most and smales \n"\
-"                               prime chain candidates located, but        \n"\
-"                               the sieved layers can not be reuse in      \n"\
+"                               sieve) should be use during sieving        \n"\
+"                               in this first half are the most and        \n"\
+"                               smallest prime chain candidates located,   \n"\
+"                               but the sieved layers can not be reused in \n"\
 "                               the other extensions, so enabling this     \n"\
-"                               mostly slows down mining a bit             \n"\
+"                               mostly slows down mining.                  \n"\
 "                                                                          \n"\
 "  --quiet                      print nothing                              \n"\
+"                                                                          \n"\
+"Mining statistics (printed without --verbose):                            \n"\
+"                                                                          \n"\
+"  [DATE] T/s <test/s> P/s <primes/s> 5ch (<5-ch/h> / <avg 5-ch/h>)        \n"\
 "                                                                          \n"
 
 /**
@@ -192,7 +196,7 @@ void error_msg(char *format, ...) {
 }
 
 /**
- * printf an formated string 
+ * print a formated string 
  */
 void info_msg(char *format, ...) {
   
@@ -243,7 +247,7 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
   strftime(date_time, 80, "[%F %T]",timeinfo);
 
   
-  /* collect the informationf from the different threads */
+  /* collect the information from the different threads */
   uint32_t i, n;
   for (i = 0; i < n_threads; i++) {
     
@@ -289,7 +293,7 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
 
 
 
-  /* output satistics */
+  /* output statistics */
   info_msg("%s  T/s %" PRIu32 "  P/s %" PRIu32 "  5ch/h (%" PRIu32 
            " / %" PRIu32 ") ",
            date_time,

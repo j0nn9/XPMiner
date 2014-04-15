@@ -1,5 +1,5 @@
 /**
- * Impelmentaion of the primecoin block header.
+ * Implementation of the Primecoin block header.
  *
  * (new transactions are saved into a block,
  *  but for pool mining we only need the block header)
@@ -62,7 +62,7 @@ struct BlockHeader {
   uint32_t      time;                             
   uint32_t      difficulty;                  
 
-  /* value just to chainge the header hash */
+  /* value just to change the header hash */
   uint32_t      nonce;                               
 
   uint8_t       multiplier_length;
@@ -84,7 +84,7 @@ void get_header_hash(BlockHeader *header, uint8_t hash[SHA256_DIGEST_LENGTH]);
  * 
  * read HASH_LENGTH elements
  * last significant word first
- * last signifikat byte first
+ * last significant byte first
  */
 #define mpz_set_sha256(mpz_res, hash) \
   mpz_import(mpz_res, HASH_LENGTH, -1, sizeof(hash[0]), -1, 0, hash)
@@ -105,13 +105,13 @@ void header_set_time(BlockHeader *header,
 
 /**
  * modify the block header (by increasing the nonce value) 
- * to have an hash divisibel by the first n primes
- * (where n is --nprimesinhash)
+ * to have an hash divisible by the first n primes
+ * (where n is --primes-in-hash)
  *
- * the higher n is the more mining becomes like bitoin
- * (seraching for a specific sha256 hash)
- * on the other side a highly composite hash improoves
- * seraching for prime chains
+ * the higher n is the more mining becomes like Bitoin
+ * (searching for a specific sha256 hash)
+ * on the other side a highly composite hash improves
+ * searching for prime chains
  */
 void mine_header_hash(Sieve *sieve, uint32_t n_threads);
  

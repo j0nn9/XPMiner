@@ -1,5 +1,5 @@
 /**
- * Herader file for thread safe verbose output.
+ * Header file for thread safe verbose output.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -35,7 +35,7 @@ void errno_msg(char *msg);
 void error_msg(char *format, ...);
 
 /**
- * printf an formated string 
+ * print a formated string 
  */
 void info_msg(char *format, ...);
 
@@ -50,7 +50,7 @@ void print_stats(MinerArgs *stats, uint32_t n_threads);
 void print_options();
 
 /**
- * prints the license and exits the programm
+ * prints the license and exits the program
  */
 void print_license();
 

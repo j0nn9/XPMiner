@@ -1,5 +1,5 @@
 /**
- * Implementation of the getwork protocoll for pool mining.
+ * Implementation of the getwork protocol for pool mining.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -32,7 +32,7 @@
 #include "main.h"
 
 /**
- * seconds to wait untill trying to reconnect
+ * seconds to wait until trying to reconnect
  */
 #define RECONNECT_TIME 15
 
@@ -132,7 +132,7 @@ static void create_socket() {
                     &optval, 
                     sizeof(optval)) == -1) { 
 
-    errno_msg("failed to set keepalive on tcp socket");
+    errno_msg("failed to set keep alive on tcp socket");
     info_msg("retrying after %ds...\n", RECONNECT_TIME);
 
     sleep(RECONNECT_TIME);
@@ -142,7 +142,7 @@ static void create_socket() {
 }
 
 /**
- * send hello message to othe server
+ * send hello message to other server
  * (the message format comes from xolominer)
  */
 static void send_hello() {
@@ -202,7 +202,7 @@ void connect_to_pool() {
 
   pthread_mutex_unlock(&mutex);
     
-  /* creat socket */
+  /* create socket */
   create_socket();
 
   /* set the address to connect to */
@@ -262,12 +262,12 @@ int recv_work(MinerArgs *args) {
   if (recv(tcp_socket, &msg_type, 1, 0) != 1)
     return -1;
 
-  /* read the rest of the mesage depending on the mesage type */
+  /* read the rest of the message depending on the message type */
   switch (msg_type) {
     
     case WORK_MSG: { 
 
-      /* look all mutextes so no sieve copys the header while receiving */
+      /* look all mutexes so no sieve copies the header while receiving */
       uint32_t i;
       for (i = 0; i < n_threads; i++)
         pthread_mutex_lock(&args[i].mutex);
@@ -279,27 +279,27 @@ int recv_work(MinerArgs *args) {
                0) != BLOCK_HEADER_LENGTH) {
 
         if (!opts.quiet)
-          error_msg("[EE] recieved invalid work\n");
+          error_msg("[EE] received invalid work\n");
 
-        /* unlock the mutextes */
+        /* unlock the mutexes */
         for (i = 0; i < n_threads; i++)
           pthread_mutex_unlock(&args[i].mutex);
       
         return -1;
       }
 
-      /* addjust time offset if neccesary */
+      /* adjust time offset if necessary */
       uint32_t local_time = time(NULL);
       opts.time_offset    = (local_time > opts.header->time) ? 0 : 
                             opts.header->time - local_time;
                         
 
-      /* unlock the mutextes */
+      /* unlock the mutexes */
       for (i = 0; i < n_threads; i++)
         pthread_mutex_unlock(&args[i].mutex);
 
       if (!opts.quiet)
-        info_msg("Work recieved for Target: %02x.%x\n", 
+        info_msg("Work received for Target: %02x.%x\n", 
                  chain_length(opts.header->difficulty),
                  fractional_length(opts.header->difficulty));
 
@@ -315,7 +315,7 @@ int recv_work(MinerArgs *args) {
       /* get the next pending share */
       FifoE *next_share = fifo_rem(&pending_shares);
 
-      /* recieved share result for non existant share */
+      /* received share result for non existing share */
       if (next_share == NULL)
         return -1;
 
@@ -346,7 +346,7 @@ int recv_work(MinerArgs *args) {
       
       free(next_share);
 
-      /* force reconnect after 3 continous rejected shares */
+      /* force reconnect after 3 continuous rejected shares */
       if (rejected == 3)
         connect_to_pool();
     } break;
@@ -366,7 +366,7 @@ void submit_share(BlockHeader *share,
                     (type == FIRST_CUNNINGHAM_CHAIN) ? "1CC" : "2CC";
 
 
-  /* add share verbose mesage to the pending queue */
+  /* add share verbose message to the pending queue */
   FifoE *share_info = (FifoE *) calloc(sizeof(FifoE), 1);
   sprintf(share_info->str, "Found Chain: %s%02x.%06x =>",  
           chain_str, 

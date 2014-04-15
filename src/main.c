@@ -1,6 +1,6 @@
 /**
- * Implementation of an Primecoin (XPM) Miner called xpminer.
- * This is the main file with starts everything
+ * Implementation of an Primecoin (XPM) Miner called XPMiner.
+ * This is the main file which starts everything
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -39,7 +39,7 @@ void *stats_thread(void *thread_args) {
   MinerArgs *stats   = (MinerArgs *) thread_args;
   uint64_t n_threads = stats[0].n_threads;
 
-  /* wait untill mining started */
+  /* wait until mining started */
   uint64_t i;
   for (i = 0; i < n_threads; i++) 
     while (running && stats[i].mine != MINING_STARTED)
@@ -56,7 +56,7 @@ void *stats_thread(void *thread_args) {
 }
 
 /**
- * the actual primecoin miner which starts the sieve and so on
+ * the actual Primecoin miner which starts the sieve and so on
  */
 void *primcoin_miner(void *thread_args) {
 
@@ -81,7 +81,7 @@ void *primcoin_miner(void *thread_args) {
   /* start mining */
   while (running) {
 
-    /* reset nonce if new work arrieved */
+    /* reset nonce if new work arrived */
     if (args->new_work) {
 
       pthread_mutex_lock(&args->mutex); 
@@ -108,7 +108,7 @@ void *primcoin_miner(void *thread_args) {
     /* generate a hash divisible by the hash primorial */
     mine_header_hash(sieve, args->n_threads);
 
-    /* calculate the primorial for sieveing */
+    /* calculate the primorial for sieving */
     mpz_mul(mpz_primorial, sieve->mpz_hash, opts.mpz_fixed_hash_multiplier);
 
     /* run the sieve and check the candidates */
@@ -158,7 +158,7 @@ void main_thread(MinerArgs *args) {
   /* connect to pool */
   connect_to_pool();
 
-  /* loop until programm gets closed */
+  /* loop until program gets closed */
   while (running) {
     
     /* wait for work from pool */
@@ -183,7 +183,7 @@ void main_thread(MinerArgs *args) {
         /* do nothing special */
         break;
 
-      /* reconnect on failur */
+      /* reconnect on failure */
       default:
         if (running)
           connect_to_pool();
@@ -214,7 +214,7 @@ void main_thread(MinerArgs *args) {
 }
 
 /**
- * signal handler to exit programm softly
+ * signal handler to exit program softly
  */
 void soft_shutdown(int signum) {
   
@@ -226,13 +226,13 @@ void soft_shutdown(int signum) {
 
   if (shutdown >= 5) {
     if (!opts.quiet)
-      info_msg("\rOK im going to KILL myself!!!\n");
+      info_msg("\rOK i'm going to KILL myself!!!\n");
 
     kill(0, SIGKILL);
   }
 
   if (!opts.quiet)
-    info_msg("\rshuting down...\n");
+    info_msg("\rshutting down...\n");
 
   shutdown++;
 }
@@ -243,7 +243,7 @@ void soft_shutdown(int signum) {
 int main(int argc, char *argv[]) {
 
   /**
-   * indecates that the programm shoud run
+   * indicates that the program should run
    */
   running = 1;
 
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
   signal(SIGPIPE, SIG_IGN); 
   signal(SIGQUIT, SIG_IGN);
 
-  /* read the commandline options, and initialize program wide parameters */
+  /* read the command line options, and initialize program wide parameters */
   init_opts(argc, argv);
 
   /* print options if --verbose was given */

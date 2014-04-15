@@ -67,7 +67,7 @@
 #define byte_index(index) ((index) >> 3)
 
 /**
- * stucture to store sieve statistics
+ * Structure to store sieve statistics
  */
 struct SieveStats {
   uint64_t twn[MAX_CHAIN_LENGTH];
@@ -78,35 +78,33 @@ struct SieveStats {
 };
 
 /**
- * stucture to store the sieve related content
+ * The sieve is basically a variation of the Sieve of Eratosthenes.
  *
- * the sieve is basically a variation of the Sieve of Eratosthenes.
- *
- * the indieces are all multiple of the mpz_primorial, which is
+ * The indices are all multiple of the mpz_primorial, which is
  * divisible by the first n primes (2, 3, 5, 7, 11, 13, 17, 19, 23,...)
  *
  * let H be the mpz_primorial,
  *
- * then we ar seraching for a number n with n * H +/- 1 is the first prime
- * of a prime chain, if H is divisible by prime p then we know for shure
- * that n * H +/- 1 can not be divisibe by this prime p, so we don't have
- * to sieve it. This is the cause we pumping H with lost of smal primes.
+ * then we are searching for a number n with n * H +/- 1 is the first prime
+ * of a prime chain, if H is divisible by prime p then we know for sure
+ * that n * H +/- 1 can not be divisible by this prime p, so we don't have
+ * to sieve it. This is the cause we pumping H with lost of small primes.
  *
  * now we want to sieve all primes greater than the ones we used in H
- * we know that if (n * H) % p == 1 then n * H + 1 is ddivisible by p
+ * we know that if (n * H) % p == 1 then n * H + 1 is divisible by p
  * thus n * H + 1 is composite.
  * 
  * same for n * H - 1, if (n * H) % p == p - 1 then n * H - 1 is composite.
  *
- * so now we wannt to know when (n * H) % p is 1 (or p - 1) 
- * for this we calculate the modlular inverse vor H % p (called i)
+ * so now we want to know when (n * H) % p is 1 (or p - 1) 
+ * for this we calculate the modulo inverse for H % p (called i)
  * now we know that i * H + 1 is divisible by p and we can sieve
- * all sieve etries in the form H * (i + n * p)
+ * all sieve entries in the form H * (i + n * p)
  * 
  * same for n * H - 1, we simple set i = p - i and sieve all entries
  * in the form H * (i + n * p)
  *
- * This is all simple modilo arithmetic, but to have a closer look
+ * This is all simple modulo arithmetic, but to have a closer look
  *
  * let i the multiplicative inverse of H % p 
  * so i < p and ((H % p) * i) % p == 1 then
@@ -127,8 +125,8 @@ struct SieveStats {
  * prime table, we have sieved all non primes form our sieve,
  * now to sieve all primes that are not the start of a prime chain
  * with size two we sieve all numbers in the form (n * 2H +/- 1)
- * lukiely the inverst doesn't have to be recalculated vor 2H,
- * we simplie precalculate the inverse of 2 (2^-1) for oure primes
+ * luckily the inverses doesn't have to be recalculated for 2H,
+ * we simply precalculate the inverse of 2 (2^-1) for our primes
  * and now (i * 2^-1) % p corresponds to the inverse of (2H % p)
  *
  * let 2^-1 be the inverse of 2 for the prime p then
@@ -146,11 +144,11 @@ struct SieveStats {
  * ((H % p) * i) % p <=> 1
  *
  * we continue the above step till, we sieved all numbers that are not 
- * propable candidate for a n prime chain.
+ * probable candidate for a n prime chain.
  *
  * one of these steps is called an sieve layer:
  * in layer one we sieve numbers not prime
- * in layer two all wich ar not the start of a prime chain size two
+ * in layer two all which are not the start of a prime chain size two
  * and so on.
  * Form an abstract point of view, each sieve layer consist out of
  * multiples of 2^i * H (where i ist the layer index):
@@ -165,14 +163,14 @@ struct SieveStats {
  * n layers, we know that layer n-x only contains prime chain candidates
  * of length (x + 1)
  *
- * so now that we understod the principle of sieve layers, we can move on
+ * so now that we understood the principle of sieve layers, we can move on
  * to sieve extension:
  *
  * a sieve extension is a set of layers n layers so that each extension
  * consist out of prime chain candidates with length n
  *
  * the prime coin mining sieve consist out of several extensions
- * each containing one more layer than the previous, but, also dosent use
+ * each containing one more layer than the previous, but, also dosen't use
  * the first layer of the previous.
  *
  * for example
@@ -183,7 +181,7 @@ struct SieveStats {
  * extension 3: consists out of layer 3 to n + 3
  * extension x: consists out of layer x to n + x
  *
- * Also each extension is double the size of the previouse one
+ * Also each extension is double the size of the previous one
  *
  * extension 0: 0H -  nH
  * extension 1: 0H - 2nH
@@ -191,38 +189,38 @@ struct SieveStats {
  * extension 3: 0H - 8nH
  * extension x: 0H - 2^x * nH
  *
- * so the first half of each extension > 0 is coverd by the previous extension
+ * so the first half of each extension > 0 is covered by the previous extension
  * thus we only have to calculate the second half of the extension
- * (each chain in the first half of a extension with lenght x is also
+ * (each chain in the first half of a extension with length x is also
  *  a chain in the previous extension of size x + 1)
  *
  * the interesting point about the extensions is that the layers overlap, 
- * so wen only have to calculate them once and applay them to the extension
+ * so wen only have to calculate them once and apply them to the extension
  * (we sieve with all primes in one layer, and make all non prime indices
- * (from the layer) in all extension wich contain the layer as non prime)
+ * (from the layer) in all extension which contain the layer as non prime)
  *
  * so the only extension in which we have to calculate the first half is
  * extension 0 (but on default we don't do this, because we can't reuse
  * the layers, and so even if there are more prime candidates in this
- * first half of extension 0 it generaly slows down the overal speed)
+ * first half of extension 0 it generally slows down the overall speed)
  * 
  *
  * But one should keep in mind that in the higher extensions
- * the numbers are les likely to be prime, and also the time to check them
- * with the fermat test is longer, so we can not use endles extensions
+ * the numbers are less likely to be prime, and also the time to check them
+ * with the fermat test is longer, so we can not use endless extensions
  */
 struct Sieve {
 
-  sieve_t *cc1; /* bit vektor for the chain candidates of the first kind   */
-  sieve_t *cc2; /* bit vektor for the chain candidates of the second kind  */
-  sieve_t *twn; /* bit vektor for the bi-twin chain  candidates            */
-  sieve_t *all; /* final set of candiates                                  */
-  sieve_t *ext_cc1; /* extendet cc1 candidates                             */
-  sieve_t *ext_cc2; /* extendet cc2 candidates                             */
-  sieve_t *ext_twn; /* extendet twn candidates                             */
-  sieve_t *ext_all; /* final set of extendet candidates                    */
+  sieve_t *cc1; /* bit vector for the chain candidates of the first kind   */
+  sieve_t *cc2; /* bit vector for the chain candidates of the second kind  */
+  sieve_t *twn; /* bit vector for the bi-twin chain  candidates            */
+  sieve_t *all; /* final set of candidates                                 */
+  sieve_t *ext_cc1; /* extended cc1 candidates                             */
+  sieve_t *ext_cc2; /* extended cc2 candidates                             */
+  sieve_t *ext_twn; /* extended twn candidates                             */
+  sieve_t *ext_all; /* final set of extended candidates                    */
 
-  /* temp bit vectors for calculationg on layer */
+  /* temp bit vectors for calculation one layer */
   sieve_t *cc1_layer;
   sieve_t *cc2_layer;
 
@@ -250,24 +248,24 @@ struct Sieve {
   mpz_t mpz_test_origin;
 
   /**
-   * the block header we ar mineing for
+   * the block header we are mining for
    */
   BlockHeader header;
 
   /**
    * the mpz_multiplier for the block hash
-   * prime origin = multiplyer * hash
-* this is also called the prove of work certificate
+   * prime origin = multiplier * hash
+   * this is also called the prove of work certificate
    */
   mpz_t mpz_multiplier;
 
   /**
-   * indicates wether the sieve should continue running
+   * indicates whether the sieve should continue running
    */
   char active;
 
   /**
-   * some statistcis 
+   * some statistics 
    */
   SieveStats stats;
 };
@@ -289,7 +287,7 @@ void free_sieve_globals();
 void sieve_set_header(Sieve *sieve, BlockHeader *header);
 
 /** 
- * reinitilaizes an given sieve
+ * reinit a given sieve
  */
 void reinit_sieve(Sieve *sieve);
 
@@ -299,7 +297,7 @@ void reinit_sieve(Sieve *sieve);
 void init_sieve(Sieve *sieve);
 
 /**
- * frees all used resauces of the sieve
+ * frees all used resources of the sieve
  */
 void free_sieve(Sieve *sieve);
 

@@ -1,5 +1,5 @@
 /**
- * This is the header file for the comand line parsing
+ * This is the header file for the command line parsing
  * and program wide global variables initialization.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
@@ -27,7 +27,7 @@
 #include "main.h"
 
 /**
- * stucture for storing overall miner statistics
+ * Structure for storing overall miner statistics
  */
 struct MiningStats {
   uint64_t share;
@@ -37,7 +37,7 @@ struct MiningStats {
 };
 
 /**
- * Struct for storing the program wide options
+ * Structure for storing the program wide options
  */
 struct Opts {
   
@@ -78,7 +78,7 @@ struct Opts {
   uint32_t primes_in_hash;       
 
   /**
-   * number of primes the primorial (which is used for sieveing)
+   * number of primes the primorial (which is used for sieving)
    * should be divisible by 
    * primorial := hash * pn * pn+1 * ... * pn+k
    *
@@ -88,15 +88,15 @@ struct Opts {
    */
   uint32_t primes_in_primorial; 
 
-  /* num of bits to precess in cache (while sieveing) */
+  /* num of bits to precess in cache (while sieving) */
   uint32_t cache_bits;
 
   /* print extended stats */
   char verbose;
 
   /*
-   * indecates that the first half of extension 0 
-   * should be used during sieveing
+   * indicates that the first half of extension 0 
+   * should be used during sieving
    * (see sieve.h for an detailed explanation)
    */
   char use_first_half;
@@ -116,11 +116,11 @@ struct Opts {
   uint32_t chain_length;
 
   /**
-   * the highes index in the prime table to sieve
+   * the highest index in the prime table to sieve
    */
   uint32_t max_prime_index;
  
-  /* the primorial trought which the header hash should be divisible */
+  /* the primorial trough which the header hash should be divisible */
   uint32_t hash_primorial;            
 
   /* the prime table with the first n primes */
@@ -162,7 +162,7 @@ struct Opts {
   BlockHeader *header;
 
   /**
-   * Mining statsisticts
+   * Mining statistics
    */
   MiningStats stats;
 
@@ -188,12 +188,12 @@ struct Opts {
 };
 
 /**
- * read the comand line options into a Opts struct
+ * read the command line options into a Opts structure
  */
 void init_opts(int argc, char *argv[]);
 
 /**
- * free promgram wide parameters on shutdown
+ * free program wide parameters on shutdown
  */
 void free_opts();
 

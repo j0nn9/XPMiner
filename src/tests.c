@@ -1,6 +1,6 @@
 /**
  * Implementation of some test to check the accuracy of the prime search 
- * alorithm.
+ * algorithm.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -22,14 +22,15 @@
 #include <math.h>
 #include <stdio.h>
 #include <gmp.h>
+#include <pthread.h>
 
 #include "main.h"
 
-#ifdef CHECK_MULLTIPLIER
+#ifdef CHECK_MULTIPLIER
 /**
  * this checks the calculated multiplier (i), working
- * as expected by testing if all sieve enties (n * p + i) * H +/- 1
- * to be divisieble by i
+ * as expected by testing if all sieve entries (n * p + i) * H +/- 1
+ * to be divisible by i
  */
 char check_mulltiplier(const mpz_t mpz_primorial,
                        const uint32_t *const cc1_muls, 
@@ -48,7 +49,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
   /* test the cc1 multiplier */
   for (i = min_prime; i < max_prime; i++) {
     
-    /* skipp if there is no multiplier for this prime avilabe */
+    /* skip if there is no multiplier for this prime available */
     if (cc1_muls[i * layers] == UINT32_MAX) continue;
 
     uint32_t l;
@@ -95,7 +96,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
   /* test the cc2 multiplier */
   for (i = min_prime; i < max_prime; i++) {
 
-    /* skipp if there is no multiplier for this prime avilabe */
+    /* skip if there is no multiplier for this prime available */
     if (cc2_muls[i * layers] == UINT32_MAX) continue;
 
     uint32_t l;
@@ -141,7 +142,7 @@ char check_mulltiplier(const mpz_t mpz_primorial,
 
   mpz_clear(mpz_composite);
 
-  error_msg("[DD] prime multiplier tested succesfull\n");
+  error_msg("[DD] prime multiplier tested successfully\n");
 
   return 0;
 }
@@ -230,7 +231,7 @@ char check_candidates(const mpz_t mpz_primorial,
   
   mpz_clear(mpz_origin);
 
-  error_msg("[DD] succesfull tested sieve for extension %" PRIu32 "\n",
+  error_msg("[DD] successfully tested sieve for extension %" PRIu32 "\n",
            extension);
 
   return 0;
@@ -309,8 +310,53 @@ static void sieve_from_to(sieve_t *const candidates,
   }
 }
 
+#define word_at(ary, i) (ary)[word_index(i)]
+#define bit_word(i) (((sieve_t) 1) << bit_index(i))
 /**
- * checks if an given arrays in the given intervall are equal
+ * sieves all primes in the given interval, and layer (cache optimization)
+ * for the given candidates array
+ */
+static void sieve_from_to_orig(sieve_t  *const   candidates,
+                          uint32_t *const multipliers,
+                          const uint32_t sieve_size,
+                          const uint32_t layers,
+                          const uint32_t layer,
+                          const uint32_t *const primes,
+                          const uint32_t min_prime_index,
+                          const uint32_t max_prime_index) {
+
+  /* wipe the array */
+  memset(candidates, 0, sieve_size / 8);
+  uint32_t start = 0;
+  uint32_t end   = sieve_size;
+
+  uint32_t i;
+  for (i = min_prime_index; i < max_prime_index; i++) {
+
+    /* current prime */
+    const uint32_t prime = primes[i];
+    
+    /* current factor (from the inverse calculation) */
+    uint32_t factor = multipliers[i * layers + layer];
+
+    /* adjust factor for the given range */
+    if (factor < start)
+      factor += (start - factor + prime - 1) / prime * prime;
+
+    /* progress the given range of the sieve */
+    for (; factor < end; factor += prime) {
+
+      word_at(candidates, factor) |= bit_word(factor);
+    }
+
+    /* save the factor for the next round */
+    multipliers[i * layers + layer] = factor;
+  }
+}
+
+
+/**
+ * checks if an given arrays in the given interval are equal
  */
 char ary_eql(const sieve_t *const ary1,
              const sieve_t *const ary2,
@@ -328,8 +374,8 @@ char ary_eql(const sieve_t *const ary1,
 }
 
 /**
- * easy sieveing without cache optimation and stuff to check
- * the high performace version
+ * easy sieving without cache optimization and stuff to check
+ * the high performance version
  */
 char check_sieve(const sieve_t *const cc1,
                  const sieve_t *const cc2,
@@ -350,7 +396,7 @@ char check_sieve(const sieve_t *const cc1,
                  const uint32_t sieve_size,
                  const uint32_t use_first_half) {
 
-  /* copy and reset the multiplayers */
+  /* copy and reset the multiplier */
   uint32_t *cc1_muls = malloc(sizeof(uint32_t) * layers * max_prime);
   uint32_t *cc2_muls = malloc(sizeof(uint32_t) * layers * max_prime);
 
@@ -375,7 +421,7 @@ char check_sieve(const sieve_t *const cc1,
     }
   }
 
-#ifdef CHECK_MULLTIPLIER
+#ifdef CHECK_MULTIPLIER
   check_mulltiplier(mpz_primorial,
                     cc1_muls, 
                     cc2_muls,
@@ -406,7 +452,7 @@ char check_sieve(const sieve_t *const cc1,
   for (l = 0; l < layers; l++) {
     
     /* calculate layer i */
-    sieve_from_to(cc1_layer, 
+    sieve_from_to_orig(cc1_layer, 
                   cc1_muls, 
                   sieve_size, 
                   layers, 
@@ -424,7 +470,7 @@ char check_sieve(const sieve_t *const cc1,
                   min_prime, 
                   max_prime);
 
-    /* applay the layer */
+    /* apply the layer */
     if (l < chain_length) {
       
       if (l < twn_cc2_layers) {
@@ -496,7 +542,7 @@ char check_sieve(const sieve_t *const cc1,
   char ret = 0;
   int thread_id = pthread_self();
   
-  /* check original sieveing */
+  /* check original sieving */
   if (!ary_eql(cc1, cc1_cpy, start, sieve_words)) {
     error_msg("[EE] thread-%d cc1 not equal with easy sieving!\n", thread_id);
     ret = -1;
@@ -562,7 +608,7 @@ char check_sieve(const sieve_t *const cc1,
   free(cc2_layer);
 
   if (ret == 0)
-    error_msg("[DD] Succesfully tested sieveing\n");
+    error_msg("[DD] Successfully tested sieving\n");
 
   return ret;
 }
@@ -606,15 +652,15 @@ char check_primes(const uint32_t *const primes,
     }
   }
 
-  error_msg("[DD] succesfully checkt primes\n");
+  error_msg("[DD] successfully checked primes\n");
   return 0;
 }
 #endif
 
-#ifdef CHACK_SHARE
+#ifdef CHECK_SHARE
 
 /**
- * chacks if a BlockHeader to submit is valid
+ * checks if a BlockHeader to submit is valid
  */
 char check_share(BlockHeader *share, uint32_t orig_difficulty, char type) {
 
@@ -669,7 +715,7 @@ char check_share(BlockHeader *share, uint32_t orig_difficulty, char type) {
     return -1;
   }
 
-  error_msg("[DD] Succesfully check share\n");
+  error_msg("[DD] Successfully check share\n");
   return 0;
 }
 

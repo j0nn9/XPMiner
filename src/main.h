@@ -1,5 +1,5 @@
 /**
- * This is the main header file from xpminer which contains
+ * This is the main header file from XPMiner which contains
  * some global (program wide) parameters beside other global definitions
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
@@ -21,9 +21,9 @@
 #define __MAIN_H__
 
 /**
- * Programm Name
+ * Program Name
  */
-#define PROG_NAME "xpminer-v1.0"
+#define PROG_NAME "xpminer-v1.0-alpha"
 
 /**
  * Prototypes for all stuctures
@@ -38,7 +38,7 @@ typedef struct Sieve       Sieve;
 typedef struct PrimeTable  PrimeTable;
 
 /**
- * programm versions
+ * program versions (for network protocol)
  */
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 8
@@ -70,9 +70,9 @@ typedef struct PrimeTable  PrimeTable;
 #define DEFAULT_SIEVE_SIZE 4050000u
 
 /**
- * the default numper of primes the block header hash
+ * the default number of primes the block header hash
  * should be divisible by
- * (begining by 2)
+ * (beginning with 2)
  */
 #define DEFAULT_NUM_PRIMES_IN_HASH 4
 #define MAX_NUM_PRIMES_IN_HASH 9
@@ -89,22 +89,22 @@ typedef struct PrimeTable  PrimeTable;
 #define DEFAULT_CHAIN_LENGTH 10
 
 /**
- * the default number of bytes to preocess in chae while sieveing
+ * the default number of bytes to process in cache while sieving
  */
 #define DEFAULT_CACHE_BITS 224000
 
 /**
- * the maximum chain length to deal with (word recors is 17)
+ * the maximum chain length to deal with (word record is 17)
  */
 #define MAX_CHAIN_LENGTH 32
 
 /**
- * default intervall (in seconds) to output status informations
+ * default interval (in seconds) to output status informations
  */
 #define DEFAULT_STATS_INTERVAL 60
 
 /**
- * default minimum chainlength whicht will be submitted as share to the pool
+ * default minimum chain length which will be submitted as share to the pool
  */
 #define DEFAULT_POOL_SHARE 7
 
@@ -115,14 +115,14 @@ typedef struct PrimeTable  PrimeTable;
 #define EXTERN extern
 #endif
 
-/* indecates wether the programm should shutdown */
+/* indicates whether the program should shutdown */
 EXTERN char running;
 
 /* global options */
 EXTERN Opts opts;
 
 /**
- * thread to output statsus informations
+ * thread to output status informations
  */
 void *stats_thread(void *thread_args);
 
@@ -158,7 +158,7 @@ struct MinerArgs {
   pthread_mutex_t mutex;
 };
 
-/* the differnt stats of mining */
+/* the different stats of mining */
 #define MINING_WAIT    0
 #define MINING_START   1
 #define MINING_STARTED 2

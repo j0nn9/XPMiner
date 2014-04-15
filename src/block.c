@@ -1,8 +1,8 @@
 /**
- * Impelmentaion of the primecoin block header.
+ * Implementation of the Primecoin block header.
  *
  * (new transactions are saved into a block,
- *  but for poolmining we only need the block header)
+ *  but for pool mining we only need the block header)
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -81,13 +81,13 @@ void header_set_time(BlockHeader *header,
 
 /**
  * modify the block header (by increasing the nonce value) 
- * to have an hash divisibel by the first n primes
- * (where n is --nprimesinhash)
+ * to have an hash divisible by the first n primes
+ * (where n is --primes-in-hash)
  *
- * the higher n is the more mining becomes like bitoin
- * (seraching for a specific sha256 hash)
- * on the other side a highly composite hash improoves
- * seraching for prime chains
+ * the higher n is the more mining becomes like Bitcoin
+ * (searching for a specific sha256 hash)
+ * on the other side a highly composite hash improves
+ * searching for prime chains
  */
 void mine_header_hash(Sieve *sieve, uint32_t n_threads) {
 
@@ -100,7 +100,7 @@ void mine_header_hash(Sieve *sieve, uint32_t n_threads) {
     /* all nonce values used ? */
     if (sieve->header.nonce == UINT32_MAX) {
 
-      /* addjust time */
+      /* adjust time */
       sieve->header.time += n_threads;
     }
     
@@ -109,7 +109,7 @@ void mine_header_hash(Sieve *sieve, uint32_t n_threads) {
 
     get_header_hash(&sieve->header, hash);
     
-    /* skip check if hash is smaler than 2^255 */
+    /* skip check if hash is smaller than 2^255 */
     if (hash[SHA256_DIGEST_LENGTH - 1] & 0x80) {
 
       mpz_set_sha256(sieve->mpz_hash, hash);

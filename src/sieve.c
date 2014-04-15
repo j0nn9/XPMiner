@@ -34,12 +34,12 @@
 #define word_at(ary, i) (ary)[word_index(i)]
 
 /**
- * returns a word with the given bit index settet
+ * returns a word with the given bit index setted
  */
 #define bit_word(i) (((sieve_t) 1) << bit_index(i))
 
 /**
- * returns the currnt time in microseconds
+ * returns the current time in microseconds
  */
 static inline uint64_t gettime_usec() {
 
@@ -50,20 +50,20 @@ static inline uint64_t gettime_usec() {
   return time.tv_sec * 1000000L + time.tv_usec;
 }
 
-/* the chain length we are sieveing for */
+/* the chain length we are sieving for */
 static uint32_t chain_length; 
 
 /* the minimum chain length accepted to submit */
 static uint32_t pool_share;
 
-/* the byte length of the candidate bit vektor */
+/* the byte length of the candidate bit vector */
 static uint32_t candidate_bytes;
 
-/* the prime table for sieveing */
+/* the prime table for sieving */
 static const uint32_t *primes;
 
 /**
- * the lowes index to start sieveing the primes 
+ * the lowest index to start sieving the primes 
  *
  * (this can be primes_in_primorial
  *  because nothing in the sieve is divisible by any
@@ -71,7 +71,7 @@ static const uint32_t *primes;
  */
 static uint32_t min_prime_index;
 
-/* the higes index in the prime table to sieve */
+/* the highest index in the prime table to sieve */
 static uint32_t max_prime_index;
 
 
@@ -112,8 +112,8 @@ static uint32_t layers;
 static uint32_t extensions;
 
 /*
- * indecates that the first half of extension 0 
- * should be used during sieveing
+ * indicates that the first half of extension 0 
+ * should be used during sieving
  */
 static char use_first_half;
 
@@ -139,7 +139,7 @@ static uint32_t sieve_words;
 /* half the number of bits in the sieve */
 static uint32_t bit_half;
 
-/* halve the numer of words in the sieve */
+/* halve the number of words in the sieve */
 static uint32_t word_half;
 
 /* the number of words cached */
@@ -195,7 +195,7 @@ void init_sieve_globals() {
   twn_cc2_layers = chain_length       / 2 - 1;
 
 
-  /* check the primes if DEBUG is enabeld */
+  /* check the primes if DEBUG is enabled */
   check_primes(primes, two_inverses, max_prime_index);
 }
 
@@ -316,7 +316,7 @@ void sieve_set_header(Sieve *sieve, BlockHeader *header) {
 }
 
 /** 
- * reinitilaizes an given sieve 
+ * reinit an given sieve 
  */
 void reinit_sieve(Sieve *sieve) {
 
@@ -378,7 +378,7 @@ void init_sieve(Sieve *sieve) {
 }
 
 /**
- * frees all used resauces of the sieve
+ * frees all used resources of the sieve
  */
 void free_sieve(Sieve *sieve) {
 
@@ -405,7 +405,7 @@ void free_sieve(Sieve *sieve) {
 }
 
 /**
- * sieves all primes in the given intervall, and layer (cache optimation)
+ * sieves all primes in the given interval, and layer (cache optimization)
  * for the given candidates array
  */
 static void sieve_from_to(sieve_t  *const   candidates,
@@ -443,7 +443,7 @@ static void sieve_from_to(sieve_t  *const   candidates,
 
 
 /**
- * test the found candidates with the feramt primealty test
+ * test the found candidates with the fermat primality test
  */
 static inline void test_candidates(Sieve *const sieve, 
                                    const sieve_t *const cc1,
@@ -463,7 +463,7 @@ static inline void test_candidates(Sieve *const sieve,
     /* current word */
     const sieve_t word = all[i];
 
-    /* skipp a word if there are no candidates in it */
+    /* skip a word if there are no candidates in it */
     if (word == word_max) continue; 
 
 
@@ -475,7 +475,7 @@ static inline void test_candidates(Sieve *const sieve,
 
         stats->tests++;
 
-        /* break if sieve shoud terminate */
+        /* break if sieve should terminate */
         if (!sieve->active) break;
         
         /* origin = (primorial * index) * 2^extension */
@@ -639,7 +639,7 @@ static inline void calc_multipliers(Sieve *const sieve,
  *
  * where x is hash / (2 * 3 * 5 * 7)
  *
- * the bitverktor of the sieves H, 2H, 3H, 4H, ... ,nH
+ * the bit verctor of the sieves H, 2H, 3H, 4H, ... ,nH
  * where H is the primorial
  */
 void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
@@ -648,7 +648,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
   uint64_t start_time = gettime_usec();
 #endif
 
-  /* save arrays to local variables for faster acces */
+  /* save arrays to local variables for faster access */
   uint32_t *const cc1_muls  = sieve->cc1_muls;
   uint32_t *const cc2_muls  = sieve->cc2_muls;
   sieve_t  *const twn       = sieve->twn;
@@ -701,7 +701,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
         if (l == twn_cc2_layers) 
           memcpy(twn + word_start, cc2 + word_start, cache_bytes);
  
-        /* applay layers to the twn candidates */
+        /* apply layers to the twn candidates */
         if (l == twn_cc1_layers) 
           for (w = word_start; w < word_end; w++)
             twn[w] |= cc1[w];
@@ -726,7 +726,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
       sieve_from_to(cc2_layer, cc2_muls, bit_start, bit_end, l);  
       sieve_from_to(cc1_layer, cc1_muls, bit_start, bit_end, l);  
 
-      /* applay the layer to extension 0 (the normal sieve) */
+      /* apply the layer to extension 0 (the normal sieve) */
       if (l < chain_length) {
 
         for (w = word_start; w < word_end; w++) {
@@ -739,13 +739,13 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
       if (l == twn_cc2_layers) 
         memcpy(twn + word_start, cc2 + word_start, cache_bytes);
 
-      /* applay the cc1 layers to the twn candidates */
+      /* apply the cc1 layers to the twn candidates */
       if (l == twn_cc1_layers) 
         for (w = word_start; w < word_end; w++)
           twn[w] |= cc1[w];
 
 
-      /* applay layers to the extensions */
+      /* apply layers to the extensions */
       for (e = 0; sieve->active && e < extensions; e++) {
         
         uint32_t ext_offset = e * sieve_words;
@@ -827,11 +827,11 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
    }
 
 #ifdef PRINT_TIME
-  error_msg("[DD] sieveing: %" PRIu64 "\n", gettime_usec() - start_time);
+  error_msg("[DD] sieving: %" PRIu64 "\n", gettime_usec() - start_time);
   start_time = gettime_usec();
 #endif
 
-  /* check sieve out put if DEBUG is enabeld */
+  /* check sieve out put if DEBUG is enabled */
   check_candidates(mpz_primorial,     
                    all,               
                    cc1,               
@@ -851,7 +851,7 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
     sieve_t *ptr_twn = ext_twn + e * sieve_words;
     sieve_t *ptr_all = ext_all + e * sieve_words;
 
-    /* check sieve out put if DEBUG is enabeld */
+    /* check sieve out put if DEBUG is enabled */
     check_candidates(mpz_primorial, 
                      ptr_all,               
                      ptr_cc1,               
@@ -861,13 +861,13 @@ void sieve_run(Sieve *const sieve, const mpz_t mpz_primorial) {
                      sieve_words,
                      &sieve->test_params);
 
-    /* run the feramt test on the remaining candidates */
+    /* run the fermat test on the remaining candidates */
     test_candidates(sieve, ptr_cc1, ptr_twn, ptr_all, mpz_primorial, e + 1);
   }
 #ifdef PRINT_TIME
   error_msg("[DD] testing : %" PRIu64 "\n", gettime_usec() - start_time);
 #endif
 
-  /* check candidate ratio if DEBUG is enabeld */
+  /* check candidate ratio if DEBUG is enabled */
   check_ratio(&sieve->stats);
 }

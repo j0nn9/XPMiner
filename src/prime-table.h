@@ -1,5 +1,5 @@
 /**
- * Implementation of the default Sieve of Eratosthenes to generat 
+ * Implementation of the default Sieve of Eratosthenes to generate 
  * a prime table including all primes till a given number starting by 2.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
@@ -26,7 +26,7 @@
 #include "main.h"
 
 /**
- * Primtable with len primes
+ * Prime table with len primes
  */
 struct PrimeTable {
   uint32_t *ptr;
@@ -39,7 +39,7 @@ struct PrimeTable {
 PrimeTable *gen_prime_table(uint32_t sieve_size);
 
 /**
- * creat an so called primorial 
+ * create an so called primorial 
  * (a composite number out of a given range of primes)
  */
 void primorial(PrimeTable *primes, 
@@ -48,7 +48,7 @@ void primorial(PrimeTable *primes,
                uint32_t end);
 
 /**
- * creat an so called primorial 
+ * create an so called primorial 
  * (a composite number out of a given range of primes)
  */
 void int_primorial(PrimeTable *primes, uint32_t *primorial, uint32_t end);

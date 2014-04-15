@@ -11,21 +11,21 @@ OTFLAGS = -march=native -flto=6 -O3 -fuse-linker-plugin
 SRC     = src                          
 BIN     = bin
 
-.PHONY: clean test
+.PHONY: clean test all install
 
 # development
 #CFLAGS += $(DBFLAGS) 
-#CFLAGS += -D CHECK_MULLTIPLIER
+#CFLAGS += -D CHECK_MULTIPLIER
 #CFLAGS += -D CHECK_CANDIDATES
 #CFLAGS += -D CHECK_RATIO
 #CFLAGS += -D CHECK_SIEVE
 #CFLAGS += -D CHECK_PRIMES
 #CFLAGS += -D PRINT_TIME
 #CFLAGS += -D PRINT_CACHE_TIME
-#CFLAGS += -D CHACK_SHARE
+#CFLAGS += -D CHECK_SHARE
 #CFLAGS += -D USE_GMP_MILLER_RABIN_TEST
 
-# optimation
+# optimization
 CFLAGS  += $(OTFLAGS)
 LDFLAGS += $(OTFLAGS)
 
@@ -50,3 +50,8 @@ clean:
 # compile the native binary
 xpminer: link
 	$(CC) $(LDFLAGS) $(SRC_OBJ) -o $(BIN)/xpminer
+
+all: xpminer
+
+install: all
+	cp $(BIN)/xpminer /usr/bin/

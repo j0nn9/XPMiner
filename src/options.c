@@ -1,6 +1,6 @@
 /**
- * This file does the comand line parsing and initializes
- * globale program wide parameters.
+ * This file does the command line parsing and initializes
+ * global program wide parameters.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
@@ -27,7 +27,7 @@
 #include "main.h"
 
 /**
- * macros to access the readed opts
+ * macros to access the read opts
  */
 #define LICENSE              0
 #define POOL_FEE             1
@@ -51,7 +51,7 @@
 #define QUIET               19
 
 /**
- * the avilabe comand line options
+ * the available command line options
  */
 static struct option long_options[] = {
   { "license",             no_argument,       0, LICENSE             },
@@ -78,7 +78,7 @@ static struct option long_options[] = {
 };
 
 /**
- * initialize promgram wide parameters
+ * initialize program wide parameters
  */
 void init_program_parameters() {
 
@@ -90,15 +90,15 @@ void init_program_parameters() {
   mpz_init(opts.mpz_primorial);
   mpz_init(opts.mpz_fixed_hash_multiplier);
 
-  /* chache bits need to be a multiple of word_bits */
+  /* cache bits need to be a multiple of word_bits */
   opts.cache_bits = (opts.cache_bits / word_bits) * word_bits;
 
   if (opts.cache_bits == 0)
     opts.cache_bits = word_bits;
 
   /**
-   * sive size need to be a multiplie of 2 * cache_bits 
-   * (extensions using oly the half array)
+   * sive size need to be a multiple of 2 * cache_bits 
+   * (extensions using only the half array)
    */
   opts.sieve_size = (opts.sieve_size / (2 * opts.cache_bits)) *
                    (2 * opts.cache_bits);
@@ -111,14 +111,14 @@ void init_program_parameters() {
   /* make sure enough primes are calculated */
   uint32_t sieve_size = opts.sieve_primes;
 
-  /* n / log(n) is an lower bound for the numbers of primes smaler than n */
+  /* n / log(n) is an lower bound for the numbers of primes smaller than n */
   while ((sieve_size / log(sieve_size)) < opts.sieve_primes)
     sieve_size *= 2;
 
   /* generate the prime table */
   opts.primes = gen_prime_table(sieve_size);
 
-  /* the higest prime index to sieve */
+  /* the highest prime index to sieve */
   opts.max_prime_index = opts.sieve_primes;
 
   /* generate the hash_primorial */
@@ -159,7 +159,7 @@ void init_program_parameters() {
     
     opts.two_inverses[i] = (opts.primes->ptr[i] + 1) / 2;
     
-    /* set the index after which we have to use 64 bit aritmetic */
+    /* set the index after which we have to use 64 bit arithmetic */
     if (opts.int64_arithmetic == UINT32_MAX &&
         UINT32_MAX / opts.two_inverses[i] < opts.primes->ptr[i]) {
 
@@ -169,7 +169,7 @@ void init_program_parameters() {
 
   /** 
    * estimate the sieve percentage 
-   * n / log(n) is a good appriximation for the
+   * n / log(n) is a good approximation for the
    * amount of primes till a given number n
    */
   opts.sieve_percentage = (opts.sieve_primes * 100) / 
@@ -195,7 +195,7 @@ void init_program_parameters() {
 }
 
 /**
- * free promgram wide parameters on shutdown
+ * free program wide parameters on shutdown
  */
 void free_opts() {
   
@@ -213,7 +213,7 @@ void free_opts() {
 
 
 /**
- * read the comand line options into a Opts struct
+ * read the command line options into a Opts structure
  */
 void init_opts(int argc, char *argv[]) {
 
@@ -365,6 +365,6 @@ void init_opts(int argc, char *argv[]) {
     opts.pool_share = DEFAULT_POOL_SHARE;
 
 
-  /* init promgram wide parameters */
+  /* init program wide parameters */
   init_program_parameters();
 }
