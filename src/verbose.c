@@ -369,7 +369,7 @@ void print_stats(MinerArgs *stats, uint32_t n_threads) {
   }
   
 
-  /* save current statisticts for the next round */
+  /* save current statistics for the next round */
   for (n = 0; n < MAX_CHAIN_LENGTH; n++) {
     sieve_stats_old.twn[n] = sieve_stats.twn[n];
     sieve_stats_old.cc2[n] = sieve_stats.cc2[n];
