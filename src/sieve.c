@@ -433,6 +433,7 @@ static void sieve_from_to(sieve_t  *const   candidates,
     /* progress the given range of the sieve */
     for (; factor < end; factor += prime) {
 
+      /* set sieve[factor] = composite */
       word_at(candidates, factor) |= bit_word(factor);
     }
 
