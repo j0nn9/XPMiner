@@ -1,5 +1,5 @@
 /**
- * Implementation of the getwork protocoll for pool mining.
+ * Implementation of the getwork protocol for pool mining.
  *
  * Copyright (C)  2014  Jonny Frey  <j0nn9.fr39@gmail.com>
  * 
