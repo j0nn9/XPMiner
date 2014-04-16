@@ -12,6 +12,8 @@ of the Primecoin mining algorithm beside the whole Primecoin client.
 
   * pure C code and only pthread, openssl and gmp dependencies
 
+  * less than 3000 lines of code
+
   * highly configurable
 
   * implementation of xolominers getwork-protocol (with longpoll-support)
