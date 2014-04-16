@@ -258,9 +258,10 @@ int main(int argc, char *argv[]) {
   sigaction(SIGUSR1, &action, NULL); /* to kill stats thread */
 
   /* continue mining if terminal lost connection */
-  signal(SIGHUP,  SIG_IGN);
-  signal(SIGPIPE, SIG_IGN); 
-  signal(SIGQUIT, SIG_IGN);
+  action.sa_handler = SIG_IGN;
+  sigaction(SIGHUP,  &action, NULL);
+  sigaction(SIGPIPE, &action, NULL); 
+  sigaction(SIGQUIT, &action, NULL);
 
   /* read the command line options, and initialize program wide parameters */
   init_opts(argc, argv);
