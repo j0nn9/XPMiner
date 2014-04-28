@@ -144,7 +144,6 @@ void main_thread(MinerArgs *args);
 #include "prime-tests.h"
 #include "sieve.h"
 #include "tests.h"
-#include "autotune.h"
 
 /**
  * args for the mining threads
