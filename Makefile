@@ -49,7 +49,7 @@ clean:
 
 # compile the native binary
 xpminer: link
-	$(CC) $(LDFLAGS) $(SRC_OBJ) -o $(BIN)/xpminer
+	$(CC) $(LDFLAGS) $(SRC_OBJ) -o $(BIN)/xpminer -lgmp -lcrypto -lm
 
 all: xpminer
 
